@@ -95,6 +95,16 @@ public class JConnData implements Serializable, Cloneable {
     }
 
     /**
+     * Get a parameter from the hashmap.
+     *
+     * @param param the parameter to get.
+     * @return the object.
+     */
+    public Object getParam(String param) {
+        return data.get(param);
+    }
+
+    /**
      * Adds a parameter to the JConnData.
      *
      * @param name the name of the parameter, must match the corresponding
@@ -154,7 +164,8 @@ public class JConnData implements Serializable, Cloneable {
     /**
      * Returns the type of this object.
      *
-     * @return the return type, can be either REQUEST, RETURN, EXCEPTION or ILLEGAL_PARAM_LENGTH.
+     * @return the return type, can be either REQUEST, RETURN, EXCEPTION or
+     * ILLEGAL_PARAM_LENGTH.
      */
     public int getType() {
         return type;
