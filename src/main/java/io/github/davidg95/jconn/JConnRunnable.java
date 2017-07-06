@@ -1,5 +1,5 @@
 /*
- * DavidsCodeLibrary
+ * JConn networking framewotk.
  * Created by David Grant
  */
 package io.github.davidg95.jconn;

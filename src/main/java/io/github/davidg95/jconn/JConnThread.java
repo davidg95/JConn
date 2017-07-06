@@ -1,5 +1,5 @@
 /*
- * DavidsCodeLibrary
+ * JConn networking framewotk.
  * Created by David Grant
  */
 package io.github.davidg95.jconn;
@@ -34,7 +34,7 @@ public class JConnThread extends Thread {
     private ObjectInputStream obIn; //InputStream for receiving data.
     private ObjectOutputStream obOut; //OutputStream for sending data
 
-    private final StampedLock outLock;
+    private final StampedLock outLock; //The StampedLock for protecting the output stream.
 
     private final Socket socket; //The main socket
 
@@ -82,7 +82,8 @@ public class JConnThread extends Thread {
     }
 
     /**
-     * Sends data to the client.
+     * Calling this method will send the JConnData to the client. This method
+     * will aquire a writeLock on the outLock StampedLock.
      *
      * @param data the data to send.
      * @throws IOException if there was a network error.
