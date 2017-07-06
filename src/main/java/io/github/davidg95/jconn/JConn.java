@@ -150,7 +150,12 @@ public class JConn {
             returnData.object = tempReply;
             returnData.cont = true;
         };
-        incomingQueue.put(data.getFlag(), runnable); //Add the runnable to the queue
+        final long stamp = queueLock.writeLock();
+        try {
+            incomingQueue.put(data.getFlag(), runnable); //Add the runnable to the queue
+        } finally {
+            queueLock.unlockWrite(stamp);
+        }
         new Thread() {
             @Override
             public void run() {
@@ -187,7 +192,12 @@ public class JConn {
             returnData.object = tempReply;
             returnData.cont = true;
         };
-        incomingQueue.put(data.getFlag(), runnable); //Add the runnable to the queue
+        final long stamp = queueLock.writeLock();
+        try {
+            incomingQueue.put(data.getFlag(), runnable); //Add the runnable to the queue
+        } finally {
+            queueLock.unlockWrite(stamp);
+        }
         waitHere(returnData); //Wait here until a reply is received
         reply = (JConnData) returnData.object; //Get the reply
         if (reply.getType() == JConnData.ILLEGAL_PARAM_LENGTH) { //Check if it is an illegal parameter length
