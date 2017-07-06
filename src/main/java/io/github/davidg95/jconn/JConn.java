@@ -58,6 +58,7 @@ public class JConn {
         private final JConnRunnable runner;
 
         private IncomingThread(ObjectInputStream in, JConnRunnable runner) {
+            super("Incoming_Thread");
             this.in = in;
             run = true;
             this.runner = runner;
