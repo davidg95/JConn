@@ -57,6 +57,13 @@ public class JConn {
         private boolean run;
         private final JConnRunnable runner;
 
+        /**
+         * Constructor which creates the IncomingThread.
+         *
+         * @param in the inputstream where the data comes from.
+         * @param runner the runner which will get run when data is not
+         * recognised.
+         */
         private IncomingThread(ObjectInputStream in, JConnRunnable runner) {
             super("Incoming_Thread");
             this.in = in;
@@ -64,6 +71,14 @@ public class JConn {
             this.runner = runner;
         }
 
+        /**
+         * Main logic for incoming thread. When data is received, it is checked
+         * to see if it is a reply or an exception. If it is a reply, or an
+         * exception, then the queue if checked for the thread which made the
+         * request. The reply is then returned to the thread. If it was no a
+         * reply, then it is passed into the runnable specified by the user
+         * which will contain the users own implementation.
+         */
         @Override
         public void run() {
             try {
@@ -108,6 +123,9 @@ public class JConn {
             }
         }
 
+        /**
+         * Calling this will stop the thread from running.
+         */
         private void stopRun() {
             run = false;
         }
@@ -238,9 +256,12 @@ public class JConn {
         connected = false;
     }
 
+    /**
+     * Class which holds the return data and the flag.
+     */
     private class ReturnData {
 
-        private Object object;
-        private boolean cont = false;
+        private Object object; //The reply.
+        private boolean cont = false; //This flag indicates when the reply has been received.
     }
 }
