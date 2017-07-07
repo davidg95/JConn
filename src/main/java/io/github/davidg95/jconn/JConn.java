@@ -66,8 +66,8 @@ public class JConn {
 
         @Override
         public void run() {
-            while (run) {
-                try {
+            try {
+                while (run) {
                     final JConnData data = (JConnData) in.readObject(); //Get the data
                     final String flag = data.getFlag(); //Get the flag
                     if (data.getType() == JConnData.RETURN || data.getType() == JConnData.EXCEPTION) { //Check if this was a reply to a request.
@@ -102,9 +102,9 @@ public class JConn {
                     } else {
                         runner.run(data); //If the flag was not recognised, then the deafult runned is executed.
                     }
-                } catch (IOException | ClassNotFoundException ex) {
-                    Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex);
                 }
+            } catch (IOException | ClassNotFoundException ex) {
+                Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
 
