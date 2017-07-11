@@ -10,6 +10,8 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.StampedLock;
@@ -33,24 +35,22 @@ public class JConn {
     private final HashMap<UUID, JConnRunnable> incomingQueue;
     private final StampedLock queueLock;
     private IncomingThread inc;
-    private final JConnRunnable run;
 
     private boolean connected;
 
     private String ip;
     private int port;
 
+    private final List<JConnListener> listeners;
+
     /**
      * Creates a new JConn object.
-     *
-     * @param run the runnable to execute when an unknown flag is received from
-     * the server.
      */
-    public JConn(JConnRunnable run) {
+    public JConn() {
         incomingQueue = new HashMap<>();
-        this.run = run;
         connected = false;
         queueLock = new StampedLock();
+        listeners = new LinkedList<>();
     }
 
     /**
@@ -60,20 +60,16 @@ public class JConn {
 
         private final ObjectInputStream in;
         private boolean run;
-        private final JConnRunnable runner;
 
         /**
          * Constructor which creates the IncomingThread.
          *
-         * @param in the inputstream where the data comes from.
-         * @param runner the runner which will get run when data is not
-         * recognised.
+         * @param in the input stream where the data comes from. recognised.
          */
-        private IncomingThread(ObjectInputStream in, JConnRunnable runner) {
+        private IncomingThread(ObjectInputStream in) {
             super("Incoming_Thread");
             this.in = in;
             run = true;
-            this.runner = runner;
         }
 
         /**
@@ -89,8 +85,7 @@ public class JConn {
             try {
                 while (run) {
                     final JConnData data = (JConnData) in.readObject(); //Get the data
-                    final String flag = data.getFlag(); //Get the flag
-                    final UUID uuid = data.getUuid(); //GEt the UUID
+                    final UUID uuid = data.getUuid(); //Get the UUID
                     if (data.getType() == JConnData.RETURN || data.getType() == JConnData.EXCEPTION) { //Check if this was a reply to a request.
                         new Thread() {
                             @Override
@@ -121,21 +116,26 @@ public class JConn {
                             }
                         }.start(); //Search the queue for the reqeust source.
                     } else {
-                        runner.run(data); //If the flag was not recognised, then the deafult runned is executed.
+                        listeners.forEach((l) -> { //Alert the listeners of the data.
+                            l.onReceive(data);
+                        });
                     }
                 }
             } catch (SocketException ex) {
-                System.out.println("Connection to server lost, retrying...");
+                listeners.forEach((l) -> { //Alert the listeners of the connection loss
+                    l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
+                });
                 try {
                     boolean retry = true;
                     while (retry) {
                         try {
                             JConn.this.connect(ip, port);
-                            System.out.println("Connection reestablished");
+                            listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
+                                l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                            });
                             retry = false;
                         } catch (IOException ex2) {
                             Thread.sleep(1000);
-                            System.out.println("Retrying...");
                         }
                     }
                 } catch (InterruptedException ex1) {
@@ -168,16 +168,9 @@ public class JConn {
         out = new ObjectOutputStream(socket.getOutputStream());
         out.flush();
         in = new ObjectInputStream(socket.getInputStream());
-        inc = new IncomingThread(in, run);
+        inc = new IncomingThread(in);
         inc.start();
         connected = true;
-    }
-
-    private void reconnect(String ip, int port) throws IOException {
-        socket = new Socket(ip, port);
-        out = new ObjectOutputStream(socket.getOutputStream());
-        out.flush();
-        in = new ObjectInputStream(socket.getInputStream());
     }
 
     /**
@@ -286,6 +279,15 @@ public class JConn {
         out.close();
         socket.close();
         connected = false;
+    }
+
+    /**
+     * Register a JConnListener to receive JConnEvents.
+     *
+     * @param listener the JConnListener.
+     */
+    public void registerListener(JConnListener listener) {
+        listeners.add(listener);
     }
 
     /**
