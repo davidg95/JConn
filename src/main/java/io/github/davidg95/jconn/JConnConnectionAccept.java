@@ -74,6 +74,11 @@ public class JConnConnectionAccept extends Thread {
         return THREADS;
     }
 
+    /**
+     * Removed a thread from the list of threads.
+     *
+     * @param th the thread to remove.
+     */
     protected static void removeThread(JConnThread th) {
         final long stamp = LOCK.writeLock();
         try {
@@ -81,6 +86,24 @@ public class JConnConnectionAccept extends Thread {
         } finally {
             LOCK.unlockWrite(stamp);
         }
+    }
+
+    /**
+     * Get a read lock on the threads list.
+     *
+     * @return the stamp for the lock.
+     */
+    protected static long readLock() {
+        return LOCK.readLock();
+    }
+
+    /**
+     * Unlock the read lock for the threads list.
+     *
+     * @param stamp the stamp for the lock.
+     */
+    protected static void unlockRead(final long stamp) {
+        LOCK.unlockRead(stamp);
     }
 
     @Override
@@ -107,7 +130,7 @@ public class JConnConnectionAccept extends Thread {
         for (;;) {
             try {
                 final Socket incoming = socket.accept(); //Wait for a connection.
-                if(JConnServer.DEBUG){
+                if (JConnServer.DEBUG) {
                     LOG.log(Level.INFO, "Connection from " + incoming.getInetAddress().getHostAddress());
                 }
                 final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, classToScan);
