@@ -122,6 +122,7 @@ public class JConn {
                     }
                 }
             } catch (SocketException ex) {
+                connected = false;
                 listeners.forEach((l) -> { //Alert the listeners of the connection loss
                     l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
                 });
