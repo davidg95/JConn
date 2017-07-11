@@ -6,7 +6,9 @@
 package io.github.davidg95.jconn;
 
 /**
- * Interface for class to listen for JConnEvents.
+ * Interface for class to listen for JConnEvents. Any class that implements this
+ * interface must be registered using the JConn.registerListener(JConnListener)
+ * method.
  *
  * @author David
  */
@@ -27,7 +29,7 @@ public interface JConnListener {
     public void onConnectionDrop(JConnEvent event);
 
     /**
-     * When the connection to the server is reestablished
+     * When the connection to the server is reestablished after being down.
      *
      * @param event the event data.
      */
