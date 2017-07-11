@@ -53,6 +53,8 @@ public class JConnThread extends Thread {
      */
     private final Object classToScan;
 
+    private final String address;
+
     /**
      * Constructor for Connection thread.
      *
@@ -63,6 +65,7 @@ public class JConnThread extends Thread {
     public JConnThread(String name, Socket s, Object o) {
         super(name);
         this.socket = s;
+        this.address = s.getInetAddress().getHostAddress();
         sem = new Semaphore(1);
         this.classToScan = o;
         JCONNMETHODS = new LinkedList<>();
@@ -220,14 +223,23 @@ public class JConnThread extends Thread {
             if (JConnServer.DEBUG) {
                 LOG.log(Level.INFO, "Connection closing to client");
             }
+            JConnServer.LISTENERS.forEach((l) -> { //Alert the listeners of the end of the connection.
+                l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
+            });
         } catch (SocketException ex) {
             if (JConnServer.DEBUG) {
                 LOG.log(Level.SEVERE, "The connection to the client was shut down forcefully");
             }
+            JConnServer.LISTENERS.forEach((l) -> { //Alert the listeners of the end of the connection.
+                l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
+            });
         } catch (IOException | ClassNotFoundException | CloneNotSupportedException | SecurityException ex) {
             if (JConnServer.DEBUG) {
                 LOG.log(Level.SEVERE, null, ex);
             }
+            JConnServer.LISTENERS.forEach((l) -> { //Alert the listeners of the end of the connection.
+                l.onConnectionDrop(new JConnEvent("There was an error in the connection to " + address + ". The connection has been closed."));
+            });
         } finally {
             JConnConnectionAccept.removeThread(this); //Remove the connection from the list.
             conn_term = false;

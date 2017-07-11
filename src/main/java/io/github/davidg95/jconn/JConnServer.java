@@ -5,6 +5,8 @@
 package io.github.davidg95.jconn;
 
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,6 +28,12 @@ public class JConnServer {
     protected static boolean DEBUG = false;
 
     private static JConnConnectionAccept acceptThread;
+
+    protected static final List<JConnListener> LISTENERS;
+
+    static {
+        LISTENERS = new LinkedList<>();
+    }
 
     /**
      * Start a new instance of JConnServer on the specified port.
@@ -94,5 +102,14 @@ public class JConnServer {
                 JConnConnectionAccept.unlockRead(stamp);
             }
         }
+    }
+
+    /**
+     * Register a listener.
+     *
+     * @param listener the JConnListener to register.
+     */
+    public static void registerListener(JConnListener listener) {
+        LISTENERS.add(listener);
     }
 }

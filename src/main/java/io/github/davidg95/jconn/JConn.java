@@ -43,6 +43,8 @@ public class JConn {
 
     private final List<JConnListener> listeners;
 
+    private static final int RECONNECT_INTERVAL = 1000;
+
     /**
      * Creates a new JConn object.
      */
@@ -130,13 +132,13 @@ public class JConn {
                     boolean retry = true;
                     while (retry) {
                         try {
-                            JConn.this.connect(ip, port);
+                            JConn.this.connect(ip, port); //Attempt a reconnect.
                             listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
                                 l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
                             });
                             retry = false;
                         } catch (IOException ex2) {
-                            Thread.sleep(1000);
+                            Thread.sleep(RECONNECT_INTERVAL); //Wait and try again
                         }
                     }
                 } catch (InterruptedException ex1) {
