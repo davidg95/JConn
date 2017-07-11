@@ -10,6 +10,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.locks.StampedLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -28,7 +29,7 @@ public class JConn {
     private ObjectInputStream in;
     private ObjectOutputStream out;
 
-    private final HashMap<String, JConnRunnable> incomingQueue;
+    private final HashMap<UUID, JConnRunnable> incomingQueue;
     private final StampedLock queueLock;
     private IncomingThread inc;
     private final JConnRunnable run;
@@ -85,6 +86,7 @@ public class JConn {
                 while (run) {
                     final JConnData data = (JConnData) in.readObject(); //Get the data
                     final String flag = data.getFlag(); //Get the flag
+                    final UUID uuid = data.getUuid(); //GEt the UUID
                     if (data.getType() == JConnData.RETURN || data.getType() == JConnData.EXCEPTION) { //Check if this was a reply to a request.
                         new Thread() {
                             @Override
@@ -95,7 +97,7 @@ public class JConn {
                                     final long stamp = queueLock.readLock();
                                     try {
                                         for (Map.Entry me : incomingQueue.entrySet()) { //Loop through the waiting threads
-                                            if (me.getKey().equals(flag)) { //Check if the flag equals the flag on the blocked thread
+                                            if (me.getKey().equals(uuid)) { //Check if the flag equals the flag on the blocked thread
                                                 ((JConnRunnable) me.getValue()).run(data); //Unblock the thread.
                                                 found = true;
                                                 remove = me; //Keep a reference to the entry, so it can be removed.
@@ -171,7 +173,7 @@ public class JConn {
         };
         final long stamp = queueLock.writeLock();
         try {
-            incomingQueue.put(data.getFlag(), runnable); //Add the runnable to the queue
+            incomingQueue.put(data.getUuid(), runnable); //Add the runnable to the queue
         } finally {
             queueLock.unlockWrite(stamp);
         }
@@ -213,7 +215,7 @@ public class JConn {
         };
         final long stamp = queueLock.writeLock();
         try {
-            incomingQueue.put(data.getFlag(), runnable); //Add the runnable to the queue
+            incomingQueue.put(data.getUuid(), runnable); //Add the runnable to the queue
         } finally {
             queueLock.unlockWrite(stamp);
         }
