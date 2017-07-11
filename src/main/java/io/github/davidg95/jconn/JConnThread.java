@@ -89,6 +89,9 @@ public class JConnThread extends Thread {
      * @throws IOException if there was a network error.
      */
     protected void sendData(JConnData data) throws IOException {
+        if(conn_term){
+            return;
+        }
         final long stamp = outLock.writeLock();
         try {
             obOut.writeObject(data);
@@ -225,6 +228,7 @@ public class JConnThread extends Thread {
             }
         } finally {
             JConnConnectionAccept.removeThread(this); //Remove the connection from the list.
+            conn_term = false;
             try {
                 socket.close(); //Close the socket
                 if (JConnServer.DEBUG) {
