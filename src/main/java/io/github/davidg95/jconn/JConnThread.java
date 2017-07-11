@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.StampedLock;
 import java.util.logging.Level;
@@ -89,7 +90,7 @@ public class JConnThread extends Thread {
      * @throws IOException if there was a network error.
      */
     protected void sendData(JConnData data) throws IOException {
-        if(conn_term){
+        if (conn_term) {
             return;
         }
         final long stamp = outLock.writeLock();
@@ -145,6 +146,7 @@ public class JConnThread extends Thread {
                     if (a.annotationType() == JConnMethod.class) { //Check if it has the JConnMethod annotation
                         final JConnMethod ja = (JConnMethod) a; //Get the JConnMethod annotation object to find out the flag name
                         final String flag = data.getFlag(); //Get the flag from the connection object
+                        final UUID uuid = data.getUuid();
                         if (ja.value().equals(flag)) { //Check if the current flag matches the flag definted on the annotation
                             try {
                                 final JConnData clone = data.clone(); //Take a clone of the connection data object
@@ -155,7 +157,7 @@ public class JConnThread extends Thread {
                                         if (m.getParameterCount() != map.size()) { //Check the amount of paramters passed in matches the amount on the method.
                                             final long stamp = outLock.writeLock();
                                             try {
-                                                obOut.writeObject(JConnData.create(flag).setType(JConnData.ILLEGAL_PARAM_LENGTH));
+                                                obOut.writeObject(JConnData.create(flag, uuid).setType(JConnData.ILLEGAL_PARAM_LENGTH));
                                             } finally {
                                                 outLock.unlockWrite(stamp);
                                             }
@@ -181,14 +183,14 @@ public class JConnThread extends Thread {
                                                 final Object ret = m.invoke(classToScan, params); //Invoke the method
                                                 final long stamp = outLock.writeLock();
                                                 try {
-                                                    obOut.writeObject(JConnData.create(flag).setReturnValue(ret)); //Return the result
+                                                    obOut.writeObject(JConnData.create(flag, uuid).setReturnValue(ret)); //Return the result
                                                 } finally {
                                                     outLock.unlockWrite(stamp);
                                                 }
                                             } catch (InvocationTargetException ex) {
                                                 final long stamp = outLock.writeLock();
                                                 try {
-                                                    obOut.writeObject(JConnData.create(flag).setException(ex)); //Return the result
+                                                    obOut.writeObject(JConnData.create(flag, uuid).setException(ex)); //Return the result
                                                 } finally {
                                                     outLock.unlockWrite(stamp);
                                                 }
@@ -197,7 +199,7 @@ public class JConnThread extends Thread {
                                     } catch (IllegalAccessException | IllegalArgumentException | IOException ex) {
                                         final long stamp = outLock.writeLock();
                                         try {
-                                            obOut.writeObject(JConnData.create(flag).addParam("RETURN", ex));
+                                            obOut.writeObject(JConnData.create(flag, uuid).addParam("RETURN", ex));
                                         } catch (IOException ex1) {
                                             Logger.getLogger(JConnThread.class.getName()).log(Level.SEVERE, null, ex1);
                                         } finally {
