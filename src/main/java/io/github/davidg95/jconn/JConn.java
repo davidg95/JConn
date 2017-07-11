@@ -43,6 +43,8 @@ public class JConn {
 
     private final List<JConnListener> listeners;
 
+    private final StampedLock listenerLock;
+
     private static final int RECONNECT_INTERVAL = 1000;
 
     /**
@@ -53,6 +55,7 @@ public class JConn {
         connected = false;
         queueLock = new StampedLock();
         listeners = new LinkedList<>();
+        listenerLock = new StampedLock();
     }
 
     /**
@@ -118,24 +121,41 @@ public class JConn {
                             }
                         }.start(); //Search the queue for the reqeust source.
                     } else {
-                        listeners.forEach((l) -> { //Alert the listeners of the data.
-                            l.onReceive(data);
-                        });
+                        final long stamp = listenerLock.readLock();
+                        try {
+                            listeners.forEach((l) -> { //Alert the listeners of the data.
+                                l.onReceive(data);
+                            });
+                        } finally {
+                            listenerLock.unlockRead(stamp);
+                        }
                     }
                 }
             } catch (SocketException ex) {
                 connected = false;
-                listeners.forEach((l) -> { //Alert the listeners of the connection loss
-                    l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
-                });
+                {
+                    final long stamp = listenerLock.readLock();
+                    try {
+                        listeners.forEach((l) -> { //Alert the listeners of the connection loss
+                            l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
+                        });
+                    } finally {
+                        listenerLock.unlockRead(stamp);
+                    }
+                }
                 try {
                     boolean retry = true;
                     while (retry) {
                         try {
                             JConn.this.connect(ip, port); //Attempt a reconnect.
-                            listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
-                                l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
-                            });
+                            final long stamp = listenerLock.readLock();
+                            try {
+                                listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
+                                    l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                });
+                            } finally {
+                                listenerLock.unlockRead(stamp);
+                            }
                             retry = false;
                         } catch (IOException ex2) {
                             Thread.sleep(RECONNECT_INTERVAL); //Wait and try again
@@ -290,7 +310,12 @@ public class JConn {
      * @param listener the JConnListener.
      */
     public void registerListener(JConnListener listener) {
-        listeners.add(listener);
+        final long stamp = listenerLock.writeLock();
+        try {
+            listeners.add(listener);
+        } finally {
+            listenerLock.unlockWrite(stamp);
+        }
     }
 
     /**
