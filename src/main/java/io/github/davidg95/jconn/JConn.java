@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +36,9 @@ public class JConn {
     private final JConnRunnable run;
 
     private boolean connected;
+
+    private String ip;
+    private int port;
 
     /**
      * Creates a new JConn object.
@@ -120,6 +124,23 @@ public class JConn {
                         runner.run(data); //If the flag was not recognised, then the deafult runned is executed.
                     }
                 }
+            } catch (SocketException ex) {
+                System.out.println("Connection to server lost, retrying...");
+                try {
+                    boolean retry = true;
+                    while (retry) {
+                        try {
+                            JConn.this.connect(ip, port);
+                            System.out.println("Connection reestablished");
+                            retry = false;
+                        } catch (IOException ex2) {
+                            Thread.sleep(1000);
+                            System.out.println("Retrying...");
+                        }
+                    }
+                } catch (InterruptedException ex1) {
+                    Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex1);
+                }
             } catch (IOException | ClassNotFoundException ex) {
                 Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -142,12 +163,21 @@ public class JConn {
      */
     public void connect(String ip, int port) throws IOException {
         socket = new Socket(ip, port);
+        this.ip = ip;
+        this.port = port;
         out = new ObjectOutputStream(socket.getOutputStream());
         out.flush();
         in = new ObjectInputStream(socket.getInputStream());
         inc = new IncomingThread(in, run);
         inc.start();
         connected = true;
+    }
+
+    private void reconnect(String ip, int port) throws IOException {
+        socket = new Socket(ip, port);
+        out = new ObjectOutputStream(socket.getOutputStream());
+        out.flush();
+        in = new ObjectInputStream(socket.getInputStream());
     }
 
     /**
