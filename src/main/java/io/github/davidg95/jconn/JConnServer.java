@@ -5,6 +5,8 @@
 package io.github.davidg95.jconn;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Class which start the server.
@@ -60,19 +62,36 @@ public class JConnServer {
      * @param ip the address of the client to send data to, null for all
      * clients.
      * @param data the data to send.
-     * @throws IOException if there was an error.
      */
-    public static void sendData(String ip, JConnData data) throws IOException {
+    public static void sendData(String ip, JConnData data) {
         if (ip == null) {
-            for (JConnThread thread : JConnConnectionAccept.getAllThreads()) {
-                thread.sendData(data);
+            final long stamp = JConnConnectionAccept.readLock();
+            try {
+                for (JConnThread thread : JConnConnectionAccept.getAllThreads()) {
+                    try {
+                        thread.sendData(data);
+                    } catch (IOException ex) {
+                        Logger.getLogger(JConnServer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+            } finally {
+                JConnConnectionAccept.unlockRead(stamp);
             }
         } else {
-            for (JConnThread thread : JConnConnectionAccept.getAllThreads()) {
-                if (thread.getIP().equals(ip)) {
-                    thread.sendData(data);
-                    return;
+            final long stamp = JConnConnectionAccept.readLock();
+            try {
+                for (JConnThread thread : JConnConnectionAccept.getAllThreads()) {
+                    if (thread.getIP().equals(ip)) {
+                        try {
+                            thread.sendData(data);
+                        } catch (IOException ex) {
+                            Logger.getLogger(JConnServer.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                        return;
+                    }
                 }
+            } finally {
+                JConnConnectionAccept.unlockRead(stamp);
             }
         }
     }
