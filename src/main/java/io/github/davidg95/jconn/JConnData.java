@@ -6,6 +6,7 @@ package io.github.davidg95.jconn;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.UUID;
 
 /**
  * Object for storing data to be sent from client to server or vice-versa. The
@@ -15,6 +16,11 @@ import java.util.HashMap;
  * @author David
  */
 public class JConnData implements Serializable, Cloneable {
+
+    /**
+     * The UUID for the specific data request.
+     */
+    private final UUID uuid;
 
     /**
      * The flag to indicate what the data is for.
@@ -64,6 +70,13 @@ public class JConnData implements Serializable, Cloneable {
     public JConnData(String flag) {
         this.flag = flag;
         this.data = new HashMap<>();
+        this.uuid = UUID.randomUUID();
+    }
+
+    public JConnData(String flag, UUID uuid) {
+        this.uuid = uuid;
+        this.data = new HashMap<>();
+        this.flag = flag;
     }
 
     /**
@@ -74,6 +87,26 @@ public class JConnData implements Serializable, Cloneable {
      */
     public static JConnData create(String flag) {
         return new JConnData(flag);
+    }
+
+    /**
+     * Static method to create a ConnectionData object with a uuid and no data.
+     *
+     * @param flag the flag to use.
+     * @param uuid the uuid to use.
+     * @return the ConnectionData object.
+     */
+    public static JConnData create(String flag, UUID uuid) {
+        return new JConnData(flag, uuid);
+    }
+
+    /**
+     * Get the UUID for this request.
+     *
+     * @return the UUID.
+     */
+    public UUID getUuid() {
+        return uuid;
     }
 
     /**
