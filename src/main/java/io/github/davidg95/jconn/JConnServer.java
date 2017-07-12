@@ -128,4 +128,17 @@ public class JConnServer {
     public static void registerListener(JConnListener listener) {
         LISTENERS.add(listener);
     }
+
+    /**
+     * Return a list of all the IP addresses of connected clients.
+     *
+     * @return a List of type String.
+     */
+    public List<String> getClients() {
+        final List<String> ips = new LinkedList<>();
+        for (JConnThread th : JConnConnectionAccept.getAllThreads()) {
+            ips.add(th.getIP());
+        }
+        return ips;
+    }
 }
