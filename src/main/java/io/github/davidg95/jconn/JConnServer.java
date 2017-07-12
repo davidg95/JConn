@@ -134,7 +134,7 @@ public class JConnServer {
      *
      * @return a List of type String.
      */
-    public List<String> getClients() {
+    public static List<String> getClients() {
         final List<String> ips = new LinkedList<>();
         for (JConnThread th : JConnConnectionAccept.getAllThreads()) {
             ips.add(th.getIP());
