@@ -5,6 +5,7 @@
 package io.github.davidg95.jconn;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -50,6 +51,11 @@ public class JConnConnectionAccept extends Thread {
 
     private static final List<JConnThread> THREADS = new LinkedList<>();
     private static final StampedLock LOCK = new StampedLock();
+    
+    /**
+     * All the detected method which have the @JConnMethod annotation.
+     */
+    private final LinkedList<Method> JCONNMETHODS;
 
     /**
      * Constructor which starts the ThreadPoolExcecutor.
@@ -63,6 +69,7 @@ public class JConnConnectionAccept extends Thread {
         this.socket = new ServerSocket(PORT);
         this.classToScan = classToScan;
         PORT_IN_USE = PORT;
+        JCONNMETHODS = new LinkedList<>();
     }
 
     /**
@@ -105,6 +112,18 @@ public class JConnConnectionAccept extends Thread {
     protected static void unlockRead(final long stamp) {
         LOCK.unlockRead(stamp);
     }
+    
+    /**
+     * Scans this class and finds all method with the JConnMethod annotation.
+     */
+    private void scanClass() {
+        final Method[] methods = classToScan.getClass().getDeclaredMethods(); //Get all the methods in this class
+        for (Method m : methods) { //Loop through each method
+            if (m.isAnnotationPresent(JConnMethod.class)) { //Check if the annotation is a JConnMethod annotation
+                JCONNMETHODS.add(m);
+            }
+        }
+    }
 
     @Override
     public void run() {
@@ -133,7 +152,7 @@ public class JConnConnectionAccept extends Thread {
                 if (JConnServer.DEBUG) {
                     LOG.log(Level.INFO, "Connection from " + incoming.getInetAddress().getHostAddress());
                 }
-                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, classToScan);
+                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, classToScan.getClass());
                 pool.submit(th); //Submit the socket to the excecutor.
                 final long stamp = LOCK.writeLock();
                 try {
