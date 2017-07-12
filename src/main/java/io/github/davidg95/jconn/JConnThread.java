@@ -48,10 +48,7 @@ public class JConnThread extends Thread {
      */
     private final LinkedList<Method> JCONNMETHODS;
 
-    /**
-     * Class which contained the annotated methods.
-     */
-    private final Object classToScan;
+    private final Object methodClass;
 
     private final String address;
 
@@ -59,30 +56,22 @@ public class JConnThread extends Thread {
      * Constructor for Connection thread.
      *
      * @param name the name of the thread.
-     * @param s the socket used for this connection.
-     * @param o the class to scan.
+     * @param s the socket used for this connection
+     * @param methods the JConn annotated method.
+     * @param cls the class containing JConnMethods.
+     * @throws java.lang.InstantiationException if there was an error creating
+     * an instance of the method class.
+     * @throws java.lang.IllegalAccessException if the method class is not
+     * accessible.
      */
-    public JConnThread(String name, Socket s, Object o) {
+    public JConnThread(String name, Socket s, LinkedList<Method> methods, Class cls) throws InstantiationException, IllegalAccessException {
         super(name);
         this.socket = s;
         this.address = s.getInetAddress().getHostAddress();
         sem = new Semaphore(1);
-        this.classToScan = o;
-        JCONNMETHODS = new LinkedList<>();
-        scanClass();
+        this.JCONNMETHODS = methods;
         outLock = new StampedLock();
-    }
-
-    /**
-     * Scans this class and finds all method with the JConnMethod annotation.
-     */
-    private void scanClass() {
-        final Method[] methods = classToScan.getClass().getDeclaredMethods(); //Get all the methods in this class
-        for (Method m : methods) { //Loop through each method
-            if (m.isAnnotationPresent(JConnMethod.class)) { //Check if the annotation is a JConnMethod annotation
-                JCONNMETHODS.add(m);
-            }
-        }
+        methodClass = cls.newInstance();
     }
 
     /**
@@ -183,7 +172,7 @@ public class JConnThread extends Thread {
                                                 it.remove();
                                             }
                                             try {
-                                                final Object ret = m.invoke(classToScan, params); //Invoke the method
+                                                final Object ret = m.invoke(methodClass, params); //Invoke the method
                                                 final long stamp = outLock.writeLock();
                                                 try {
                                                     obOut.writeObject(JConnData.create(flag, uuid).setReturnValue(ret)); //Return the result
