@@ -75,13 +75,13 @@ public class JConnServer {
         if (ip == null) {
             final long stamp = JConnConnectionAccept.readLock();
             try {
-                for (JConnThread thread : JConnConnectionAccept.getAllThreads()) {
+                JConnConnectionAccept.getAllThreads().forEach((thread) -> { //Send to all connections.
                     try {
                         thread.sendData(data);
                     } catch (IOException ex) {
                         Logger.getLogger(JConnServer.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                }
+                });
             } finally {
                 JConnConnectionAccept.unlockRead(stamp);
             }
