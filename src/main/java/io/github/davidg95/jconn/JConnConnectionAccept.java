@@ -165,6 +165,11 @@ public class JConnConnectionAccept extends Thread {
                     LOG.log(Level.SEVERE, null, ex);
                     LOG.log(Level.SEVERE, "THREAD POOL EXECUTOR HAS STOPPED");
                 }
+            } catch (InstantiationException | IllegalAccessException ex) {
+                if (JConnServer.DEBUG) {
+                    LOG.log(Level.SEVERE, null, ex);
+                    LOG.log(Level.SEVERE, "There was an error in the connection to the client");
+                }
             }
         }
     }
