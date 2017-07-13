@@ -80,14 +80,14 @@ public class JConnThread extends Thread {
      * @throws java.lang.IllegalAccessException if the method class is not
      * accessible.
      */
-    public JConnThread(String name, Socket s, LinkedList<Method> methods, Class cls) throws InstantiationException, IllegalAccessException {
+    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object cls) throws InstantiationException, IllegalAccessException {
         super(name);
         this.socket = s;
         this.address = s.getInetAddress().getHostAddress();
         sem = new Semaphore(1);
         this.JCONNMETHODS = methods;
         outLock = new StampedLock();
-        methodClass = cls.newInstance();
+        methodClass = cls;
     }
 
     /**

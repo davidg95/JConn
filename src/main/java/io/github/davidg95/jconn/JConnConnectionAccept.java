@@ -86,6 +86,7 @@ public class JConnConnectionAccept extends Thread {
         this.classToScan = classToScan;
         PORT_IN_USE = PORT;
         JCONNMETHODS = new LinkedList<>();
+        scanClass();
     }
 
     /**
@@ -168,7 +169,7 @@ public class JConnConnectionAccept extends Thread {
                 if (JConnServer.DEBUG) {
                     LOG.log(Level.INFO, "Connection from " + incoming.getInetAddress().getHostAddress());
                 }
-                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, classToScan.getClass());
+                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, classToScan);
                 pool.submit(th); //Submit the socket to the excecutor.
                 final long stamp = LOCK.writeLock();
                 try {
