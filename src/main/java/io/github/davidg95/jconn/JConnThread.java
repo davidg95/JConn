@@ -246,8 +246,8 @@ public class JConnThread extends Thread {
                 l.onConnectionDrop(new JConnEvent("There was an error in the connection to " + address + ". The connection has been closed."));
             });
         } finally {
-            JConnConnectionAccept.removeThread(this); //Remove the connection from the list.
             conn_term = false;
+            JConnConnectionAccept.removeThread(this); //Remove the connection from the list.
             try {
                 socket.close(); //Close the socket
                 if (JConnServer.DEBUG) {
