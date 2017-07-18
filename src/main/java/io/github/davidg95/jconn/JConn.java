@@ -272,7 +272,7 @@ public class JConn {
      * thrown.
      *
      * @param data the data to send.
-     * @return the data that was returned.
+     * @return the reply from the server as an Object.
      * @throws IOException if there was an error sending the data.
      */
     public Object sendData(JConnData data) throws Exception, IOException {
