@@ -140,7 +140,11 @@ public class JConn {
                         final long stamp = listenerLock.readLock();
                         try {
                             listeners.forEach((l) -> { //Alert the listeners of the data.
-                                l.onReceive(data);
+                                try {
+                                    l.onReceive(data);
+                                } catch (Exception e) {
+
+                                }
                             });
                         } finally {
                             listenerLock.unlockRead(stamp);
@@ -153,7 +157,11 @@ public class JConn {
                     final long stamp = listenerLock.readLock();
                     try {
                         listeners.forEach((l) -> { //Alert the listeners of the connection loss
-                            l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
+                            try {
+                                l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
+                            } catch (Exception e) {
+
+                            }
                         });
                     } finally {
                         listenerLock.unlockRead(stamp);
@@ -167,7 +175,11 @@ public class JConn {
                             final long stamp = listenerLock.readLock();
                             try {
                                 listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
-                                    l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                    try {
+                                        l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                    } catch (Exception e) {
+
+                                    }
                                 });
                             } finally {
                                 listenerLock.unlockRead(stamp);
