@@ -275,7 +275,7 @@ public class JConn {
      * @return the data that was returned.
      * @throws IOException if there was an error sending the data.
      */
-    public JConnData sendData(JConnData data) throws Exception, IOException {
+    public Object sendData(JConnData data) throws Exception, IOException {
         if (!connected) {
             throw new IOException("No connection to server!");
         }
@@ -300,7 +300,7 @@ public class JConn {
         } else if (reply.getType() == JConnData.EXCEPTION) {
             throw (Exception) reply.getException();
         }
-        return reply; //Return the reply
+        return reply.getReturnValue(); //Return the reply
     }
 
     /**
