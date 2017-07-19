@@ -152,45 +152,47 @@ public class JConn {
                     }
                 }
             } catch (SocketException ex) {
-                connected = false;
-                {
-                    final long stamp = listenerLock.readLock();
-                    try {
-                        listeners.forEach((l) -> { //Alert the listeners of the connection loss
-                            try {
-                                l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
-                            } catch (Exception e) {
-
-                            }
-                        });
-                    } finally {
-                        listenerLock.unlockRead(stamp);
-                    }
-                }
-                try {
-                    boolean retry = true;
-                    while (retry) {
+                if (connected) {
+                    connected = false;
+                    {
+                        final long stamp = listenerLock.readLock();
                         try {
-                            JConn.this.connect(ip, port); //Attempt a reconnect.
-                            final long stamp = listenerLock.readLock();
-                            try {
-                                listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
-                                    try {
-                                        l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
-                                    } catch (Exception e) {
+                            listeners.forEach((l) -> { //Alert the listeners of the connection loss
+                                try {
+                                    l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
+                                } catch (Exception e) {
 
-                                    }
-                                });
-                            } finally {
-                                listenerLock.unlockRead(stamp);
-                            }
-                            retry = false;
-                        } catch (IOException ex2) {
-                            Thread.sleep(RECONNECT_INTERVAL); //Wait and try again
+                                }
+                            });
+                        } finally {
+                            listenerLock.unlockRead(stamp);
                         }
                     }
-                } catch (InterruptedException ex1) {
-                    Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex1);
+                    try {
+                        boolean retry = true;
+                        while (retry) {
+                            try {
+                                JConn.this.connect(ip, port); //Attempt a reconnect.
+                                final long stamp = listenerLock.readLock();
+                                try {
+                                    listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
+                                        try {
+                                            l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                        } catch (Exception e) {
+
+                                        }
+                                    });
+                                } finally {
+                                    listenerLock.unlockRead(stamp);
+                                }
+                                retry = false;
+                            } catch (IOException ex2) {
+                                Thread.sleep(RECONNECT_INTERVAL); //Wait and try again
+                            }
+                        }
+                    } catch (InterruptedException ex1) {
+                        Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex1);
+                    }
                 }
             } catch (IOException | ClassNotFoundException ex) {
                 Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex);
@@ -324,12 +326,12 @@ public class JConn {
      * @throws IOException if there was an error ending the connection.
      */
     public void endConnection() throws IOException {
+        connected = false;
+        socket.close();
         inc.stopRun();
         in.close();
         out.flush();
         out.close();
-        socket.close();
-        connected = false;
     }
 
     /**
