@@ -221,6 +221,9 @@ public class JConn {
      * @throws IOException if there was an error connecting.
      */
     public void connect(String ip, int port) throws IOException {
+        if (connected) {
+            throw new IOException("there is already an active connection on this JConn object. Close this connection or create a new instance of the JConn class");
+        }
         socket = new Socket(ip, port);
         this.ip = ip;
         this.port = port;
