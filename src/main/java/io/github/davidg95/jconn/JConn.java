@@ -61,7 +61,10 @@ public class JConn {
 
     private final StampedLock listenerLock;
 
-    private static final int RECONNECT_INTERVAL = 1000;
+    /**
+     * The duration of time in milliseconds between reconnection attempts.
+     */
+    public static int RECONNECT_INTERVAL = 1000;
 
     private boolean retry;
 
