@@ -63,6 +63,8 @@ public class JConn {
 
     private static final int RECONNECT_INTERVAL = 1000;
 
+    private boolean retry;
+
     /**
      * Creates a new JConn object.
      */
@@ -72,6 +74,7 @@ public class JConn {
         queueLock = new StampedLock();
         listeners = new LinkedList<>();
         listenerLock = new StampedLock();
+        retry = true;
     }
 
     /**
@@ -169,7 +172,7 @@ public class JConn {
                         }
                     }
                     try {
-                        boolean retry = true;
+                        retry = true;
                         while (retry) {
                             try {
                                 JConn.this.connect(ip, port); //Attempt a reconnect.
@@ -218,6 +221,7 @@ public class JConn {
         socket = new Socket(ip, port);
         this.ip = ip;
         this.port = port;
+        retry = true;
         out = new ObjectOutputStream(socket.getOutputStream());
         out.flush();
         in = new ObjectInputStream(socket.getInputStream());
@@ -346,6 +350,14 @@ public class JConn {
         } finally {
             listenerLock.unlockWrite(stamp);
         }
+    }
+
+    /**
+     * Stop retrying the connection when the connection to the server is
+     * dropped.
+     */
+    public void cancelRetry() {
+        retry = false;
     }
 
     /**
