@@ -262,7 +262,7 @@ public class JConnThread extends Thread {
     }
 
     public void endConnection() throws IOException {
-        conn_term = true;
         this.sendData(JConnData.create("END").setType(JConnData.TERMINATE_CONNECTION));
+        conn_term = true;
     }
 }
