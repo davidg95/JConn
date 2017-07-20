@@ -114,7 +114,7 @@ public class JConnThread extends Thread {
      *
      * @return the IP address.
      */
-    protected String getAddress() {
+    public String getAddress() {
         return socket.getInetAddress().getHostAddress() + ":" + socket.getPort();
     }
 
