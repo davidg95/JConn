@@ -105,7 +105,7 @@ public class JConnServer {
             final long stamp = JConnConnectionAccept.readLock();
             try {
                 for (JConnThread thread : JConnConnectionAccept.getAllThreads()) {
-                    if (thread.getIP().equals(ip)) {
+                    if (thread.getAddress().equals(ip)) {
                         try {
                             thread.sendData(data);
                         } catch (IOException ex) {
@@ -136,9 +136,9 @@ public class JConnServer {
      */
     public static List<String> getClients() {
         final List<String> ips = new LinkedList<>();
-        for (JConnThread th : JConnConnectionAccept.getAllThreads()) {
-            ips.add(th.getIP());
-        }
+        JConnConnectionAccept.getAllThreads().forEach((th) -> {
+            ips.add(th.getAddress());
+        });
         return ips;
     }
 }
