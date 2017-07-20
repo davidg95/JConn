@@ -174,7 +174,7 @@ public class JConnData implements Serializable, Cloneable {
      * @param value the value to set.
      * @return this object.
      */
-    public JConnData setReturnValue(Object value) {
+    protected JConnData setReturnValue(Object value) {
         returnValue = value;
         type = RETURN;
         return this;
@@ -196,7 +196,7 @@ public class JConnData implements Serializable, Cloneable {
      * @param ex the exception.
      * @return this object.
      */
-    public JConnData setException(Exception ex) {
+    protected JConnData setException(Exception ex) {
         exception = ex;
         return this;
     }
@@ -227,7 +227,7 @@ public class JConnData implements Serializable, Cloneable {
      * @param type the type.
      * @return this object.
      */
-    public JConnData setType(int type) {
+    protected JConnData setType(int type) {
         this.type = type;
         return this;
     }
@@ -239,7 +239,7 @@ public class JConnData implements Serializable, Cloneable {
      * @throws CloneNotSupportedException if cloning is not supported.
      */
     @Override
-    public JConnData clone() throws CloneNotSupportedException {
+    protected JConnData clone() throws CloneNotSupportedException {
         try {
             final JConnData result = (JConnData) super.clone();
             return result;
