@@ -130,15 +130,11 @@ public class JConnServer {
     }
 
     /**
-     * Return a list of all the IP addresses of connected clients.
+     * Return a list of all the client connections.
      *
-     * @return a List of type String.
+     * @return a List of type JConnThread.
      */
-    public static List<String> getClients() {
-        final List<String> ips = new LinkedList<>();
-        JConnConnectionAccept.getAllThreads().forEach((th) -> {
-            ips.add(th.getAddress());
-        });
-        return ips;
+    public static List<JConnThread> getClientConnections() {
+        return JConnConnectionAccept.getAllThreads();
     }
 }
