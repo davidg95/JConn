@@ -97,7 +97,7 @@ public class JConnThread extends Thread {
      * @param data the data to send.
      * @throws IOException if there was a network error.
      */
-    protected void sendData(JConnData data) throws IOException {
+    public void sendData(JConnData data) throws IOException {
         if (conn_term) {
             return;
         }
