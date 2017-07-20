@@ -142,6 +142,20 @@ public class JConn {
                                 }
                             }
                         }.start(); //Search the queue for the reqeust source.
+                    } else if (data.getType() == JConnData.TERMINATE_CONNECTION) {
+                        final long stamp = listenerLock.readLock();
+                        try {
+                            listeners.forEach((l) -> {
+                                try {
+                                    l.onServerGracefulEnd();
+                                } catch (Exception e) {
+
+                                }
+                            });
+                            endConnection();
+                        } finally {
+                            listenerLock.unlockRead(stamp);
+                        }
                     } else {
                         final long stamp = listenerLock.readLock();
                         try {

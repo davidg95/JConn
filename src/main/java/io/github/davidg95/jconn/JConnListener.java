@@ -49,4 +49,9 @@ public interface JConnListener {
      * @param event the event data.
      */
     public void onConnectionReestablish(JConnEvent event);
+
+    /**
+     * When the server gracefully terminates the connection.
+     */
+    public void onServerGracefulEnd();
 }

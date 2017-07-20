@@ -76,6 +76,10 @@ public class JConnData implements Serializable, Cloneable {
      * Indicates an illegal parameter length.
      */
     public static final int ILLEGAL_PARAM_LENGTH = 4;
+    /**
+     * Indicates that the server wished to terminate the connection.
+     */
+    public static final int TERMINATE_CONNECTION = 5;
 
     /**
      * Constructor which creates a ConnectionData object with no data, only a
