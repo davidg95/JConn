@@ -58,7 +58,7 @@ public class JConnServer {
      * @param classToScan the class to scan for annotations on methods.
      * @throws IOException if there was an error ins starting the server.
      */
-    public static void start(int port, Object classToScan) throws IOException {
+    public static void start(int port, Class classToScan) throws IOException {
         start(port, classToScan, false);
     }
 
@@ -70,7 +70,7 @@ public class JConnServer {
      * @param debug indicates if log output should be included.
      * @throws IOException if there was an error ins starting the server.
      */
-    public static void start(int port, Object classToScan, boolean debug) throws IOException {
+    public static void start(int port, Class classToScan, boolean debug) throws IOException {
         if (started) {
             throw new IOException("JConn has already been started");
         }

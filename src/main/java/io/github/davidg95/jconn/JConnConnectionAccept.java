@@ -21,6 +21,8 @@
 package io.github.davidg95.jconn;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -63,7 +65,7 @@ public class JConnConnectionAccept extends Thread {
 
     private final ServerSocket socket;
 
-    private final Object classToScan;
+    private final Class classToScan;
 
     private static final List<JConnThread> THREADS = new LinkedList<>();
     private static final StampedLock LOCK = new StampedLock();
@@ -80,7 +82,7 @@ public class JConnConnectionAccept extends Thread {
      * @param classToScan the class to be scanned for annotations.
      * @throws IOException if there was a network error.
      */
-    public JConnConnectionAccept(int PORT, Object classToScan) throws IOException {
+    public JConnConnectionAccept(int PORT, Class classToScan) throws IOException {
         super("ConnectionAcceptThread");
         this.socket = new ServerSocket(PORT);
         this.classToScan = classToScan;
@@ -134,7 +136,7 @@ public class JConnConnectionAccept extends Thread {
      * Scans this class and finds all method with the JConnMethod annotation.
      */
     private void scanClass() {
-        final Method[] methods = classToScan.getClass().getDeclaredMethods(); //Get all the methods in this class
+        final Method[] methods = classToScan.getDeclaredMethods(); //Get all the methods in this class
         for (Method m : methods) { //Loop through each method
             if (m.isAnnotationPresent(JConnMethod.class)) { //Check if the annotation is a JConnMethod annotation
                 JCONNMETHODS.add(m);
@@ -169,7 +171,9 @@ public class JConnConnectionAccept extends Thread {
                 if (JConnServer.DEBUG) {
                     LOG.log(Level.INFO, "Connection from " + incoming.getInetAddress().getHostAddress());
                 }
-                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, classToScan);
+                final Constructor c = classToScan.getDeclaredConstructor(); //Get the blank constructor
+                c.setAccessible(true);
+                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance());
                 pool.submit(th); //Submit the socket to the excecutor.
                 final long stamp = LOCK.writeLock();
                 try {
@@ -187,6 +191,9 @@ public class JConnConnectionAccept extends Thread {
                     LOG.log(Level.SEVERE, null, ex);
                     LOG.log(Level.SEVERE, "There was an error in the connection to the client");
                 }
+            } catch (IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException ex) {
+                LOG.log(Level.SEVERE, null, ex);
+                LOG.log(Level.SEVERE, "There was an error in the connection to the client");
             }
         }
     }
