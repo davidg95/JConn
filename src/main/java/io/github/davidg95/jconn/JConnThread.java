@@ -74,20 +74,20 @@ public class JConnThread extends Thread {
      * @param name the name of the thread.
      * @param s the socket used for this connection
      * @param methods the JConn annotated method.
-     * @param cls the class containing JConnMethods.
+     * @param methodClass the methodClass object.
      * @throws java.lang.InstantiationException if there was an error creating
      * an instance of the method class.
      * @throws java.lang.IllegalAccessException if the method class is not
      * accessible.
      */
-    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object cls) throws InstantiationException, IllegalAccessException {
+    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass) throws InstantiationException, IllegalAccessException {
         super(name);
         this.socket = s;
         this.address = s.getInetAddress().getHostAddress();
         sem = new Semaphore(1);
         this.JCONNMETHODS = methods;
         outLock = new StampedLock();
-        methodClass = cls;
+        this.methodClass = methodClass;
     }
 
     /**
@@ -261,8 +261,22 @@ public class JConnThread extends Thread {
         }
     }
 
+    /**
+     * Sends a request to the client to end the connection gracefully.
+     *
+     * @throws IOException if there was an error sending the request.
+     */
     public void endConnection() throws IOException {
         this.sendData(JConnData.create("END").setType(JConnData.TERMINATE_CONNECTION));
         conn_term = true;
+    }
+
+    /**
+     * Get the instance of the method class which handles this connection.
+     *
+     * @return the method class instance.
+     */
+    public Object getMethodClass() {
+        return methodClass;
     }
 }
