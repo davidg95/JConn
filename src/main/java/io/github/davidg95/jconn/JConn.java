@@ -331,7 +331,7 @@ public class JConn {
         if (reply.getType() == JConnData.ILLEGAL_PARAM_LENGTH) { //Check if it is an illegal parameter length
             throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
         } else if (reply.getType() == JConnData.EXCEPTION) {
-            throw (Exception) reply.getException();
+            throw reply.getException();
         }
         return reply.getReturnValue(); //Return the reply
     }
@@ -385,6 +385,14 @@ public class JConn {
      */
     public void cancelRetry() {
         retry = false;
+    }
+
+    /**
+     * Check the state of this connection.
+     * @return true if the connection is up, false if it is not.
+     */
+    public boolean isUp() {
+        return connected;
     }
 
     /**
