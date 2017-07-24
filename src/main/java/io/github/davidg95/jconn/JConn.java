@@ -258,13 +258,16 @@ public class JConn {
      *
      * @param data the data to send.
      * @param run the runnable to execute on a successful response.
+     * @return JConnStatus so the status of the request can be checked.
      * @throws IOException if there was an error sending the data.
      */
-    public void sendData(JConnData data, JConnRunnable run) throws IOException {
+    public JConnStatus sendData(JConnData data, JConnRunnable run) throws IOException {
         if (!connected) {
             throw new IOException("No connection to server!");
         }
+        final JConnStatus status = new JConnStatus();
         out.writeObject(data);
+        status.setSent(true);
         final ReturnData returnData = new ReturnData();
         //Create the runnable that will execute on a reply
         final JConnRunnable runnable = (tempReply) -> {
@@ -277,10 +280,11 @@ public class JConn {
         } finally {
             queueLock.unlockWrite(stamp);
         }
-        new Thread() {
+        final Runnable runReturn = new Runnable() {
             @Override
             public void run() {
                 waitHere(returnData); //Wait for the return;
+                status.setReceived(true);
                 JConnData reply = (JConnData) returnData.object; //Get the reply
                 if (reply.getFlag().equals("ILLEGAL_PARAM_LENGTH")) { //Check if there was an illegal paramter length
                     //throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
@@ -288,7 +292,10 @@ public class JConn {
                 }
                 run.run(reply); //Run the runnable that was passed in by the user, passing in the reply.
             }
-        }.start();
+        };
+        final Thread thread = new Thread(runReturn, "REQUEST-" + data.getUuid());
+        thread.start(); //Start the thread to wait for the reply.
+        return status;
     }
 
     /**
