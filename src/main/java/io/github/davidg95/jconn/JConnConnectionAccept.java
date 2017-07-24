@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  *
  * @author David
  */
-public class JConnConnectionAccept<T> extends Thread {
+public class JConnConnectionAccept extends Thread {
 
     private static final Logger LOG = Logger.getGlobal();
 
