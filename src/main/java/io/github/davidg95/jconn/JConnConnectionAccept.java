@@ -82,7 +82,7 @@ public class JConnConnectionAccept extends Thread {
      * @param classToScan the class to be scanned for annotations.
      * @throws IOException if there was a network error.
      */
-    public <T> JConnConnectionAccept(int PORT, Class classToScan) throws IOException {
+    public JConnConnectionAccept(int PORT, Class classToScan) throws IOException {
         super("ConnectionAcceptThread");
         this.socket = new ServerSocket(PORT);
         this.classToScan = classToScan;
