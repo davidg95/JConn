@@ -11,8 +11,8 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ * GNU General Public License for more details. 
+*
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
@@ -389,10 +389,21 @@ public class JConn {
 
     /**
      * Check the state of this connection.
+     *
      * @return true if the connection is up, false if it is not.
      */
     public boolean isUp() {
         return connected;
+    }
+
+    /**
+     * Returns information about the connection.
+     *
+     * @return connection info as a String.
+     */
+    @Override
+    public String toString() {
+        return (this.connected ? "Connected to " + ip + ":" + port : "No connection");
     }
 
     /**
