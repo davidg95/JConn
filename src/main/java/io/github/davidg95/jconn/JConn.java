@@ -48,9 +48,9 @@ public class JConn {
     private ObjectInputStream in;
     private ObjectOutputStream out;
 
-    private final HashMap<UUID, JConnRunnable> incomingQueue;
-    private final StampedLock queueLock;
-    private IncomingThread inc;
+    private final HashMap<UUID, JConnRunnable> incomingQueue; //The queue for all incoming packets.
+    private final StampedLock queueLock; //Lock for the queue.
+    private IncomingThread inc; //The thread which handles the incoming packets.
 
     private boolean connected;
 
@@ -58,7 +58,6 @@ public class JConn {
     private int port;
 
     private final List<JConnListener> listeners;
-
     private final StampedLock listenerLock;
 
     /**
