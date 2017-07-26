@@ -142,7 +142,9 @@ public class JConnData implements Serializable, Cloneable {
      * Method to get the data for this object.
      *
      * @return the data as an Object array.
+     * @deprecated use getParam() instead.
      */
+    @Deprecated
     public HashMap getData() {
         return data;
     }

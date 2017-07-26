@@ -27,7 +27,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Class which start the server.
+ * Class which starts the server.
  *
  * @author David
  */
@@ -76,7 +76,7 @@ public class JConnServer {
      * @param port the port to listen on.
      * @param classToScan the class to scan for annotations on methods.
      * @return the JConnServer instance.
-     * @throws IOException if there was an error ins starting the server.
+     * @throws IOException if there was an error starting the server.
      */
     public static JConnServer start(int port, Class classToScan) throws IOException {
         return start(port, classToScan, false);
@@ -89,7 +89,7 @@ public class JConnServer {
      * @param classToScan the class to scan for annotations on methods.
      * @param debug indicates if log output should be included.
      * @return the JConnServer instance.
-     * @throws IOException if there was an error ins starting the server.
+     * @throws IOException if there was an error starting the server.
      */
     public static JConnServer start(int port, Class classToScan, boolean debug) throws IOException {
         final JConnServer server = new JConnServer(port, classToScan, debug);;
