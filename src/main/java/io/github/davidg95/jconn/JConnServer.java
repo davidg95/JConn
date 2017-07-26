@@ -38,12 +38,36 @@ public class JConnServer {
      */
     protected boolean debug = false;
 
-    private JConnConnectionAccept acceptThread;
+    /**
+     * The connection accept thread handler class.
+     */
+    private final JConnConnectionAccept acceptThread;
 
-    protected final List<JConnListener> listeners;
+    /**
+     * The JConnListeners.
+     */
+    private final List<JConnListener> listeners;
 
-    public JConnServer() {
+    /**
+     * Constructor which creates a new server instance.
+     *
+     * @param port the port to use.
+     * @param classToScan the class with the JConnMethod annotated methods.
+     * @param debug if debug output should be shown.
+     * @throws IOException if there was an error starting the server.
+     */
+    private JConnServer(int port, Class classToScan, boolean debug) throws IOException {
         listeners = new LinkedList<>();
+        this.debug = debug;
+        acceptThread = new JConnConnectionAccept(port, classToScan, debug, listeners);
+        init();
+    }
+
+    /**
+     * Starts the thread.
+     */
+    private void init() {
+        acceptThread.start();
     }
 
     /**
@@ -68,23 +92,8 @@ public class JConnServer {
      * @throws IOException if there was an error ins starting the server.
      */
     public static JConnServer start(int port, Class classToScan, boolean debug) throws IOException {
-        final JConnServer server = new JConnServer();
-        server.startServerInstance(port, classToScan, debug);
+        final JConnServer server = new JConnServer(port, classToScan, debug);;
         return server;
-    }
-
-    /**
-     * Starts the new server instance.
-     *
-     * @param port the port to run on.
-     * @param classToScan the class with the JConnMethod annotated method.
-     * @param debug if debug output should be shown.
-     * @throws IOException if there was an error starting the server.
-     */
-    private void startServerInstance(int port, Class classToScan, boolean debug) throws IOException {
-        this.debug = debug;
-        acceptThread = new JConnConnectionAccept(port, classToScan, debug, listeners);
-        acceptThread.start();
     }
 
     /**
