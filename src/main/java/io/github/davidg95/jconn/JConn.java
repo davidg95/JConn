@@ -300,18 +300,15 @@ public class JConn {
         } finally {
             queueLock.unlockWrite(stamp);
         }
-        final Runnable runReturn = new Runnable() {
-            @Override
-            public void run() {
-                waitHere(returnData); //Wait for the return;
-                status.setReceived(true);
-                JConnData reply = (JConnData) returnData.object; //Get the reply
-                if (reply.getFlag().equals("ILLEGAL_PARAM_LENGTH")) { //Check if there was an illegal paramter length
-                    //throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
-                    return;
-                }
-                run.run(reply); //Run the runnable that was passed in by the user, passing in the reply.
+        final Runnable runReturn = () -> {
+            waitHere(returnData); //Wait for the return;
+            status.setReceived(true);
+            JConnData reply = (JConnData) returnData.object; //Get the reply
+            if (reply.getFlag().equals("ILLEGAL_PARAM_LENGTH")) { //Check if there was an illegal paramter length
+                //throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
+                return;
             }
+            run.run(reply); //Run the runnable that was passed in by the user, passing in the reply.
         };
         final Thread thread = new Thread(runReturn, "REQUEST-" + data.getUuid());
         thread.start(); //Start the thread to wait for the reply.

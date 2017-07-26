@@ -32,6 +32,7 @@ import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
@@ -67,6 +68,10 @@ public class JConnThread extends Thread {
     private final Object methodClass;
 
     private final String address;
+    
+    private final boolean debug;
+    
+    private final List<JConnListener> listeners;
 
     /**
      * Constructor for Connection thread.
@@ -75,15 +80,19 @@ public class JConnThread extends Thread {
      * @param s the socket used for this connection
      * @param methods the JConn annotated method.
      * @param methodClass the methodClass object.
+     * @param debug indicates if debug output should be shown.
+     * @param listeners the JConnListeners.
      * @throws java.lang.InstantiationException if there was an error creating
      * an instance of the method class.
      * @throws java.lang.IllegalAccessException if the method class is not
      * accessible.
      */
-    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass) throws InstantiationException, IllegalAccessException {
+    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners) throws InstantiationException, IllegalAccessException {
         super(name);
         this.socket = s;
         this.address = s.getInetAddress().getHostAddress();
+        this.debug = debug;
+        this.listeners = listeners;
         sem = new Semaphore(1);
         this.JCONNMETHODS = methods;
         outLock = new StampedLock();
@@ -138,14 +147,14 @@ public class JConnThread extends Thread {
                 try {
                     sem.acquire();
                 } catch (InterruptedException ex) {
-                    if (JConnServer.DEBUG) {
+                    if (debug) {
                         LOG.log(Level.SEVERE, null, ex);
                     }
                 }
 
                 final JConnData data = currentData.clone(); //Take a clone of the ConnectionData object
 
-                if (JConnServer.DEBUG) {
+                if (debug) {
                     LOG.log(Level.INFO, "Received " + data.getFlag() + " from client", data.getFlag());
                 }
 
@@ -225,24 +234,24 @@ public class JConnThread extends Thread {
                 }
                 sem.release();
             }
-            if (JConnServer.DEBUG) {
+            if (debug) {
                 LOG.log(Level.INFO, "Connection closing to client");
             }
-            JConnServer.LISTENERS.forEach((l) -> { //Alert the listeners of the end of the connection.
+            listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
                 l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
             });
         } catch (SocketException ex) {
-            if (JConnServer.DEBUG) {
+            if (debug) {
                 LOG.log(Level.SEVERE, "The connection to the client was shut down forcefully");
             }
-            JConnServer.LISTENERS.forEach((l) -> { //Alert the listeners of the end of the connection.
+            listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
                 l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
             });
         } catch (IOException | ClassNotFoundException | CloneNotSupportedException | SecurityException ex) {
-            if (JConnServer.DEBUG) {
+            if (debug) {
                 LOG.log(Level.SEVERE, null, ex);
             }
-            JConnServer.LISTENERS.forEach((l) -> { //Alert the listeners of the end of the connection.
+            listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
                 l.onConnectionDrop(new JConnEvent("There was an error in the connection to " + address + ". The connection has been closed."));
             });
         } finally {
@@ -250,11 +259,11 @@ public class JConnThread extends Thread {
             JConnConnectionAccept.removeThread(this); //Remove the connection from the list.
             try {
                 socket.close(); //Close the socket
-                if (JConnServer.DEBUG) {
+                if (debug) {
                     LOG.log(Level.INFO, "Connection terminated");
                 }
             } catch (IOException ex) {
-                if (JConnServer.DEBUG) {
+                if (debug) {
                     LOG.log(Level.SEVERE, null, ex);
                 }
             }

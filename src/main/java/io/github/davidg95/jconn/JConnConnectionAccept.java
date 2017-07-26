@@ -69,23 +69,31 @@ public class JConnConnectionAccept extends Thread {
 
     private static final List<JConnThread> THREADS = new LinkedList<>();
     private static final StampedLock LOCK = new StampedLock();
+    
+    private final boolean debug;
 
     /**
      * All the detected method which have the @JConnMethod annotation.
      */
     private final LinkedList<Method> JCONNMETHODS;
+    
+    private final List<JConnListener> listeners;
 
     /**
      * Constructor which starts the ThreadPoolExcecutor.
      *
      * @param PORT the port number to listen on.
      * @param classToScan the class to be scanned for annotations.
+     * @param debug indicates if debug output should be shown.
+     * @param listeners the JConnListeners.
      * @throws IOException if there was a network error.
      */
-    public JConnConnectionAccept(int PORT, Class classToScan) throws IOException {
+    public JConnConnectionAccept(int PORT, Class classToScan, boolean debug, List<JConnListener> listeners) throws IOException {
         super("ConnectionAcceptThread");
         this.socket = new ServerSocket(PORT);
         this.classToScan = classToScan;
+        this.debug = debug;
+        this.listeners = listeners;
         PORT_IN_USE = PORT;
         JCONNMETHODS = new LinkedList<>();
         scanClass();
@@ -146,34 +154,34 @@ public class JConnConnectionAccept extends Thread {
 
     @Override
     public void run() {
-        if (JConnServer.DEBUG) {
+        if (debug) {
             LOG.log(Level.INFO, "Starting Thread Pool Excecutor");
         }
         final ThreadPoolExecutor pool = new ThreadPoolExecutor(MAX_CONN, MAX_QUEUE, 50000L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(MAX_QUEUE));
         pool.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
 
         try {
-            if (JConnServer.DEBUG) {
+            if (debug) {
                 LOG.log(Level.INFO, "Local IP address is " + InetAddress.getLocalHost().getHostAddress());
                 LOG.log(Level.INFO, "Server Socket running on port number " + PORT_IN_USE);
             }
         } catch (UnknownHostException ex) {
-            if (JConnServer.DEBUG) {
+            if (debug) {
                 LOG.log(Level.WARNING, "For some reason, the ip address of the local server could not be retrieved");
             }
         }
-        if (JConnServer.DEBUG) {
+        if (debug) {
             LOG.log(Level.INFO, "Ready to accept connections");
         }
         for (;;) {
             try {
                 final Socket incoming = socket.accept(); //Wait for a connection.
-                if (JConnServer.DEBUG) {
+                if (debug) {
                     LOG.log(Level.INFO, "Connection from " + incoming.getInetAddress().getHostAddress());
                 }
                 final Constructor c = classToScan.getDeclaredConstructor(); //Get the blank constructor
                 c.setAccessible(true);
-                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance());
+                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance(), debug, listeners);
                 pool.submit(th); //Submit the socket to the excecutor.
                 final long stamp = LOCK.writeLock();
                 try {
@@ -182,12 +190,12 @@ public class JConnConnectionAccept extends Thread {
                     LOCK.unlockWrite(stamp);
                 }
             } catch (IOException ex) {
-                if (JConnServer.DEBUG) {
+                if (debug) {
                     LOG.log(Level.SEVERE, null, ex);
                     LOG.log(Level.SEVERE, "THREAD POOL EXECUTOR HAS STOPPED");
                 }
             } catch (InstantiationException | IllegalAccessException ex) {
-                if (JConnServer.DEBUG) {
+                if (debug) {
                     LOG.log(Level.SEVERE, null, ex);
                     LOG.log(Level.SEVERE, "There was an error in the connection to the client");
                 }

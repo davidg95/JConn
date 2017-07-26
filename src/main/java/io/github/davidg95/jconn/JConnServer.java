@@ -34,21 +34,16 @@ import java.util.logging.Logger;
 public class JConnServer {
 
     /**
-     * Indicates whether the server has been started or not.
-     */
-    private static boolean started = false;
-
-    /**
      * Indicates if log output should be included.
      */
-    protected static boolean DEBUG = false;
+    protected boolean debug = false;
 
-    private static JConnConnectionAccept acceptThread;
+    private JConnConnectionAccept acceptThread;
 
-    protected static final List<JConnListener> LISTENERS;
+    protected final List<JConnListener> listeners;
 
-    static {
-        LISTENERS = new LinkedList<>();
+    public JConnServer() {
+        listeners = new LinkedList<>();
     }
 
     /**
@@ -56,10 +51,11 @@ public class JConnServer {
      *
      * @param port the port to listen on.
      * @param classToScan the class to scan for annotations on methods.
+     * @return the JConnServer instance.
      * @throws IOException if there was an error ins starting the server.
      */
-    public static void start(int port, Class classToScan) throws IOException {
-        JConnServer.start(port, classToScan, false);
+    public static JConnServer start(int port, Class classToScan) throws IOException {
+        return start(port, classToScan, false);
     }
 
     /**
@@ -68,16 +64,27 @@ public class JConnServer {
      * @param port the port to listen on.
      * @param classToScan the class to scan for annotations on methods.
      * @param debug indicates if log output should be included.
+     * @return the JConnServer instance.
      * @throws IOException if there was an error ins starting the server.
      */
-    public static void start(int port, Class classToScan, boolean debug) throws IOException {
-        if (started) {
-            throw new IOException("JConn has already been started");
-        }
-        DEBUG = debug;
-        acceptThread = new JConnConnectionAccept(port, classToScan);
+    public static JConnServer start(int port, Class classToScan, boolean debug) throws IOException {
+        final JConnServer server = new JConnServer();
+        server.startServerInstance(port, classToScan, debug);
+        return server;
+    }
+
+    /**
+     * Starts the new server instance.
+     *
+     * @param port the port to run on.
+     * @param classToScan the class with the JConnMethod annotated method.
+     * @param debug if debug output should be shown.
+     * @throws IOException if there was an error starting the server.
+     */
+    private void startServerInstance(int port, Class classToScan, boolean debug) throws IOException {
+        this.debug = debug;
+        acceptThread = new JConnConnectionAccept(port, classToScan, debug, listeners);
         acceptThread.start();
-        started = true;
     }
 
     /**
@@ -87,7 +94,7 @@ public class JConnServer {
      * clients.
      * @param data the data to send.
      */
-    public static void sendData(String ip, JConnData data) {
+    public void sendData(String ip, JConnData data) {
         if (ip == null) {
             final long stamp = JConnConnectionAccept.readLock();
             try {
@@ -125,8 +132,8 @@ public class JConnServer {
      *
      * @param listener the JConnListener to register.
      */
-    public static void registerListener(JConnListener listener) {
-        LISTENERS.add(listener);
+    public void registerListener(JConnListener listener) {
+        listeners.add(listener);
     }
 
     /**
@@ -134,7 +141,7 @@ public class JConnServer {
      *
      * @return a List of type JConnThread.
      */
-    public static List<JConnThread> getClientConnections() {
+    public List<JConnThread> getClientConnections() {
         return JConnConnectionAccept.getAllThreads();
     }
 }
