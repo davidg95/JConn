@@ -92,7 +92,7 @@ public class JConnServer {
      * @throws IOException if there was an error starting the server.
      */
     public static JConnServer start(int port, Class classToScan, boolean debug) throws IOException {
-        final JConnServer server = new JConnServer(port, classToScan, debug);;
+        final JConnServer server = new JConnServer(port, classToScan, debug);
         return server;
     }
 
