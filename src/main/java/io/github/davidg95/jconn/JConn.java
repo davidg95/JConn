@@ -146,37 +146,39 @@ public class JConn {
                                 }
                             }.start(); //Search the queue for the reqeust source.
                             break;
-                        case JConnData.TERMINATE_CONNECTION:
-                            {
-                                final long stamp = listenerLock.readLock();
-                                try {
-                                    listeners.forEach((l) -> {
-                                        try {
-                                            l.onServerGracefulEnd();
-                                        } catch (Exception e) {
-                                            
-                                        }
-                                    });
-                                    endConnection();
-                                } finally {
-                                    listenerLock.unlockRead(stamp);
-                                }       break;
+                        case JConnData.TERMINATE_CONNECTION: //If it was a request to terminate the connection.
+                        {
+                            final long stamp = listenerLock.readLock();
+                            try {
+                                listeners.forEach((l) -> {
+                                    try {
+                                        l.onServerGracefulEnd();
+                                    } catch (Exception e) {
+
+                                    }
+                                });
+                                endConnection();
+                            } finally {
+                                listenerLock.unlockRead(stamp);
                             }
-                        default:
-                            {
-                                final long stamp = listenerLock.readLock();
-                                try {
-                                    listeners.forEach((l) -> { //Alert the listeners of the data.
-                                        try {
-                                            l.onReceive(data);
-                                        } catch (Exception e) {
-                                            
-                                        }
-                                    });
-                                } finally {
-                                    listenerLock.unlockRead(stamp);
-                                }       break;
+                            break;
+                        }
+                        default: //If it is not known.
+                        {
+                            final long stamp = listenerLock.readLock();
+                            try {
+                                listeners.forEach((l) -> { //Alert the listeners of the data.
+                                    try {
+                                        l.onReceive(data);
+                                    } catch (Exception e) {
+
+                                    }
+                                });
+                            } finally {
+                                listenerLock.unlockRead(stamp);
                             }
+                            break;
+                        }
                     }
                 }
             } catch (SocketException ex) {
@@ -186,29 +188,40 @@ public class JConn {
                         final long stamp = listenerLock.readLock();
                         try {
                             listeners.forEach((l) -> { //Alert the listeners of the connection loss
-                                try {
-                                    l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
-                                } catch (Exception e) {
+                                new Thread() {
+                                    @Override
+                                    public void run() {
+                                        try {
+                                            l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
+                                        } catch (Exception e) { //Any exception which comes from the onConnectionDrop().
 
-                                }
+                                        }
+                                    }
+                                }.start();
                             });
                         } finally {
                             listenerLock.unlockRead(stamp);
                         }
                     }
+                    //Attempt a reconnection.
                     try {
                         retry = true;
                         while (retry) {
                             try {
-                                JConn.this.connect(ip, port); //Attempt a reconnect.
+                                connect(ip, port); //Attempt a reconnect.
                                 final long stamp = listenerLock.readLock();
                                 try {
                                     listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
-                                        try {
-                                            l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
-                                        } catch (Exception e) {
+                                        new Thread() {
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                                } catch (Exception e) { //Any exception which comes from the onConnectionReestablish().
 
-                                        }
+                                                }
+                                            }
+                                        }.start();
                                     });
                                 } finally {
                                     listenerLock.unlockRead(stamp);
