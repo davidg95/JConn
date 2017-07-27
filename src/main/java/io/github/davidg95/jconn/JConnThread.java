@@ -58,8 +58,6 @@ public class JConnThread extends Thread {
 
     private boolean conn_term = false;
 
-    private final Semaphore sem; //Semaphore for the output stream.
-
     /**
      * All the detected method which have the @JConnMethod annotation.
      */
@@ -68,9 +66,9 @@ public class JConnThread extends Thread {
     private final Object methodClass;
 
     private final String address;
-    
+
     private final boolean debug;
-    
+
     private final List<JConnListener> listeners;
 
     /**
@@ -93,7 +91,6 @@ public class JConnThread extends Thread {
         this.address = s.getInetAddress().getHostAddress();
         this.debug = debug;
         this.listeners = listeners;
-        sem = new Semaphore(1);
         this.JCONNMETHODS = methods;
         outLock = new StampedLock();
         this.methodClass = methodClass;
@@ -144,95 +141,91 @@ public class JConnThread extends Thread {
 
             while (!conn_term) {
                 final JConnData currentData = (JConnData) obIn.readObject();
-                try {
-                    sem.acquire();
-                } catch (InterruptedException ex) {
-                    if (debug) {
-                        LOG.log(Level.SEVERE, null, ex);
-                    }
-                }
 
                 final JConnData data = currentData.clone(); //Take a clone of the ConnectionData object
 
                 if (debug) {
                     LOG.log(Level.INFO, "Received " + data.getFlag() + " from client", data.getFlag());
                 }
-
+                boolean found = false;
                 for (Method m : JCONNMETHODS) { //Loop through every method in this class
                     final Annotation a = m.getAnnotation(JConnMethod.class); //Get the JConnMethod annotation
-                    if (a.annotationType() == JConnMethod.class) { //Check if it has the JConnMethod annotation
-                        final JConnMethod ja = (JConnMethod) a; //Get the JConnMethod annotation object to find out the flag name
-                        final String flag = data.getFlag(); //Get the flag from the connection object
-                        final UUID uuid = data.getUuid();
-                        if (ja.value().equals(flag)) { //Check if the current flag matches the flag definted on the annotation
-                            try {
-                                final JConnData clone = data.clone(); //Take a clone of the connection data object
-                                m.setAccessible(true); //Set the access to public
-                                final Runnable run = () -> {
-                                    try {
-                                        final HashMap<String, Object> map = clone.getData(); //Get the parameters
-                                        if (m.getParameterCount() != map.size()) { //Check the amount of paramters passed in matches the amount on the method.
-                                            final long stamp = outLock.writeLock();
-                                            try {
-                                                obOut.writeObject(JConnData.create(flag, uuid).setType(JConnData.ILLEGAL_PARAM_LENGTH));
-                                            } finally {
-                                                outLock.unlockWrite(stamp);
-                                            }
-                                        } else {
-                                            Iterator it = map.entrySet().iterator();
-                                            Object[] params = new Object[clone.getData().size()];
-                                            while (it.hasNext()) { //Iterate through the map of parameters
-                                                Map.Entry pair = (Map.Entry) it.next();
-                                                int currentPos = 0;
-                                                for (Parameter p : m.getParameters()) {
-                                                    final Annotation ap = p.getAnnotation(JConnParameter.class); //Get the JConnParameter annotation.
-                                                    if (ap.annotationType() == JConnParameter.class) {
-                                                        JConnParameter jp = (JConnParameter) ap;
-                                                        if (jp.value().equals(pair.getKey())) { //Check if the annotation value matches the parameter.
-                                                            params[currentPos] = pair.getValue(); //Add the parameter to the array.
-                                                        }
-                                                        currentPos++;
-                                                    }
-                                                }
-                                                it.remove();
-                                            }
-                                            try {
-                                                final Object ret = m.invoke(methodClass, params); //Invoke the method
-                                                final long stamp = outLock.writeLock();
-                                                try {
-                                                    obOut.writeObject(JConnData.create(flag, uuid).setReturnValue(ret)); //Return the result
-                                                } finally {
-                                                    outLock.unlockWrite(stamp);
-                                                }
-                                            } catch (InvocationTargetException ex) {
-                                                final long stamp = outLock.writeLock();
-                                                try {
-                                                    obOut.writeObject(JConnData.create(flag, uuid).setException(ex)); //Return the result
-                                                } finally {
-                                                    outLock.unlockWrite(stamp);
-                                                }
-                                            }
-                                        }
-                                    } catch (IllegalAccessException | IllegalArgumentException | IOException ex) {
+                    final JConnMethod ja = (JConnMethod) a; //Get the JConnMethod annotation object to find out the flag name
+                    final String flag = data.getFlag(); //Get the flag from the connection object
+                    final UUID uuid = data.getUuid();
+                    if (ja.value().equals(flag)) { //Check if the current flag matches the flag definted on the annotation
+                        found = true;
+                        try {
+                            final JConnData clone = data.clone(); //Take a clone of the connection data object
+                            m.setAccessible(true); //Set the access to public
+                            final Runnable run = () -> {
+                                try {
+                                    final HashMap<String, Object> map = clone.getData(); //Get the parameters
+                                    if (m.getParameterCount() != map.size()) { //Check the amount of paramters passed in matches the amount on the method.
                                         final long stamp = outLock.writeLock();
                                         try {
-                                            obOut.writeObject(JConnData.create(flag, uuid).addParam("RETURN", ex));
-                                        } catch (IOException ex1) {
-                                            Logger.getLogger(JConnThread.class.getName()).log(Level.SEVERE, null, ex1);
+                                            obOut.writeObject(JConnData.create(flag, uuid).setType(JConnData.ILLEGAL_PARAM_LENGTH));
                                         } finally {
                                             outLock.unlockWrite(stamp);
                                         }
+                                    } else {
+                                        Iterator it = map.entrySet().iterator();
+                                        Object[] params = new Object[clone.getData().size()];
+                                        while (it.hasNext()) { //Iterate through the map of parameters
+                                            Map.Entry pair = (Map.Entry) it.next();
+                                            int currentPos = 0;
+                                            for (Parameter p : m.getParameters()) {
+                                                final Annotation ap = p.getAnnotation(JConnParameter.class); //Get the JConnParameter annotation.
+                                                if (ap.annotationType() == JConnParameter.class) {
+                                                    JConnParameter jp = (JConnParameter) ap;
+                                                    if (jp.value().equals(pair.getKey())) { //Check if the annotation value matches the parameter.
+                                                        params[currentPos] = pair.getValue(); //Add the parameter to the array.
+                                                    }
+                                                    currentPos++;
+                                                }
+                                            }
+                                            it.remove();
+                                        }
+                                        try {
+                                            final Object ret = m.invoke(methodClass, params); //Invoke the method
+                                            final long stamp = outLock.writeLock();
+                                            try {
+                                                obOut.writeObject(JConnData.create(flag, uuid).setReturnValue(ret)); //Return the result
+                                            } finally {
+                                                outLock.unlockWrite(stamp);
+                                            }
+                                        } catch (InvocationTargetException ex) {
+                                            final long stamp = outLock.writeLock();
+                                            try {
+                                                obOut.writeObject(JConnData.create(flag, uuid).setException(ex)); //Return the result
+                                            } finally {
+                                                outLock.unlockWrite(stamp);
+                                            }
+                                        }
                                     }
-                                };
-                                new Thread(run, flag).start(); //Run the thread which will invoke the method
-                                break;
-                            } catch (IllegalArgumentException ex) {
-                                Logger.getLogger(JConnThread.class.getName()).log(Level.SEVERE, null, ex);
-                            }
+                                } catch (IllegalAccessException | IllegalArgumentException | IOException ex) {
+                                    final long stamp = outLock.writeLock();
+                                    try {
+                                        obOut.writeObject(JConnData.create(flag, uuid).addParam("RETURN", ex));
+                                    } catch (IOException ex1) {
+                                        Logger.getLogger(JConnThread.class.getName()).log(Level.SEVERE, null, ex1);
+                                    } finally {
+                                        outLock.unlockWrite(stamp);
+                                    }
+                                }
+                            };
+                            new Thread(run, flag).start(); //Run the thread which will invoke the method
+                            break;
+                        } catch (IllegalArgumentException ex) {
+                            Logger.getLogger(JConnThread.class.getName()).log(Level.SEVERE, null, ex);
                         }
                     }
                 }
-                sem.release();
+                if (!found) { //If a matching method was not found then pass the JConnData obejct over the the listenres.
+                    listeners.forEach((l) -> {
+                        l.onReceive(data);
+                    });
+                }
             }
             if (debug) {
                 LOG.log(Level.INFO, "Connection closing to client");
