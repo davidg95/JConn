@@ -187,12 +187,12 @@ public class JConnData implements Serializable, Cloneable {
     }
 
     /**
-     * Returns the return value indicated by the RETURN key. Same as
+     * Returns the return value indicated by the RETURN key in the HashMap. Same as
      * getData().getKey("RETURN").
      *
      * @return the return value.
      */
-    public Object getReturnValue() {
+    protected Object getReturnValue() {
         return returnValue;
     }
 
