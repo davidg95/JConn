@@ -192,7 +192,7 @@ public class JConnData implements Serializable, Cloneable {
      *
      * @return the return value.
      */
-    protected Object getReturnValue() {
+    public Object getReturnValue() {
         return returnValue;
     }
 
