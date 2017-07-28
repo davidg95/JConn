@@ -110,73 +110,79 @@ public class JConn {
         public void run() {
             try {
                 while (run) {
-                    final JConnData data = (JConnData) in.readObject(); //Get the data
-                    final UUID uuid = data.getUuid(); //Get the UUID
-                    switch (data.getType()) {
-                        case JConnData.RETURN:
-                        case JConnData.EXCEPTION:
-                            //Check if this was a reply to a request.
-                            new Thread() {
-                                @Override
-                                public void run() {
-                                    boolean found = false;
-                                    Map.Entry remove = null;
-                                    while (!found) {
-                                        final long stamp = queueLock.readLock();
-                                        try {
-                                            for (Map.Entry me : incomingQueue.entrySet()) { //Loop through the waiting threads
-                                                if (me.getKey().equals(uuid)) { //Check if the flag equals the flag on the blocked thread
-                                                    ((JConnRunnable) me.getValue()).run(data); //Unblock the thread.
-                                                    found = true;
-                                                    remove = me; //Keep a reference to the entry, so it can be removed.
-                                                    break;
+                    try {
+                        final JConnData data = (JConnData) in.readObject(); //Get the data
+                        final UUID uuid = data.getUuid(); //Get the UUID
+                        switch (data.getType()) {
+                            case JConnData.RETURN:
+                            case JConnData.EXCEPTION:
+                                //Check if this was a reply to a request.
+                                new Thread() {
+                                    @Override
+                                    public void run() {
+                                        boolean found = false;
+                                        Map.Entry remove = null;
+                                        while (!found) {
+                                            final long stamp = queueLock.readLock();
+                                            try {
+                                                for (Map.Entry me : incomingQueue.entrySet()) { //Loop through the waiting threads
+                                                    if (me.getKey().equals(uuid)) { //Check if the flag equals the flag on the blocked thread
+                                                        ((JConnRunnable) me.getValue()).run(data); //Unblock the thread.
+                                                        found = true;
+                                                        remove = me; //Keep a reference to the entry, so it can be removed.
+                                                        break;
+                                                    }
                                                 }
+                                            } finally {
+                                                queueLock.unlockRead(stamp);
                                             }
+                                        }
+                                        final long writeStamp = queueLock.writeLock();
+                                        try {
+                                            incomingQueue.entrySet().remove(remove); //Remove the entry as it is no longer needed.
                                         } finally {
-                                            queueLock.unlockRead(stamp);
+                                            queueLock.unlockWrite(writeStamp);
                                         }
                                     }
-                                    final long writeStamp = queueLock.writeLock();
-                                    try {
-                                        incomingQueue.entrySet().remove(remove); //Remove the entry as it is no longer needed.
-                                    } finally {
-                                        queueLock.unlockWrite(writeStamp);
-                                    }
+                                }.start(); //Search the queue for the reqeust source.
+                                break;
+                            case JConnData.TERMINATE_CONNECTION: //If it was a request to terminate the connection.
+                            {
+                                final long stamp = listenerLock.readLock();
+                                try {
+                                    listeners.forEach((l) -> {
+                                        try {
+                                            l.onServerGracefulEnd();
+                                        } catch (Exception e) {
+
+                                        }
+                                    });
+                                    endConnection();
+                                } finally {
+                                    listenerLock.unlockRead(stamp);
                                 }
-                            }.start(); //Search the queue for the reqeust source.
-                            break;
-                        case JConnData.TERMINATE_CONNECTION: //If it was a request to terminate the connection.
-                        {
-                            final long stamp = listenerLock.readLock();
-                            try {
-                                listeners.forEach((l) -> {
-                                    try {
-                                        l.onServerGracefulEnd();
-                                    } catch (Exception e) {
-
-                                    }
-                                });
-                                endConnection();
-                            } finally {
-                                listenerLock.unlockRead(stamp);
+                                break;
                             }
-                            break;
+                            default: //If it is not known.
+                            {
+                                final long stamp = listenerLock.readLock();
+                                try {
+                                    listeners.forEach((l) -> { //Alert the listeners of the data.
+                                        try {
+                                            l.onReceive(data);
+                                        } catch (Exception e) {
+
+                                        }
+                                    });
+                                } finally {
+                                    listenerLock.unlockRead(stamp);
+                                }
+                                break;
+                            }
                         }
-                        default: //If it is not known.
-                        {
-                            final long stamp = listenerLock.readLock();
-                            try {
-                                listeners.forEach((l) -> { //Alert the listeners of the data.
-                                    try {
-                                        l.onReceive(data);
-                                    } catch (Exception e) {
-
-                                    }
-                                });
-                            } finally {
-                                listenerLock.unlockRead(stamp);
-                            }
-                            break;
+                    } catch (Exception ex) {
+                        if (ex instanceof SocketException) {
+                            throw (SocketException) ex;
                         }
                     }
                 }
@@ -234,8 +240,6 @@ public class JConn {
                         Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex1);
                     }
                 }
-            } catch (IOException | ClassNotFoundException ex) {
-                Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
 
