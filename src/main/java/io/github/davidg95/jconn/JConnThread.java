@@ -69,6 +69,7 @@ public class JConnThread extends Thread {
     private final boolean debug;
 
     private final List<JConnListener> listeners;
+    private final StampedLock listenersLock;
 
     /**
      * Constructor for Connection thread.
@@ -79,12 +80,13 @@ public class JConnThread extends Thread {
      * @param methodClass the methodClass object.
      * @param debug indicates if debug output should be shown.
      * @param listeners the JConnListeners.
+     * @param listenersLock
      * @throws java.lang.InstantiationException if there was an error creating
      * an instance of the method class.
      * @throws java.lang.IllegalAccessException if the method class is not
      * accessible.
      */
-    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners) throws InstantiationException, IllegalAccessException {
+    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners, StampedLock listenersLock) throws InstantiationException, IllegalAccessException {
         super(name);
         this.socket = s;
         this.address = s.getInetAddress().getHostAddress();
@@ -93,6 +95,7 @@ public class JConnThread extends Thread {
         this.JCONNMETHODS = methods;
         outLock = new StampedLock();
         this.methodClass = methodClass;
+        this.listenersLock = listenersLock;
     }
 
     /**
@@ -220,32 +223,52 @@ public class JConnThread extends Thread {
                         }
                     }
                 }
-                if (!found) { //If a matching method was not found then pass the JConnData obejct over the the listenres.
-                    listeners.forEach((l) -> {
-                        l.onReceive(data);
-                    });
+                if (!found) { //If a matching method was not found then pass the JConnData obejct over the the listeners.
+                    final long stamp = listenersLock.readLock();
+                    try {
+                        listeners.forEach((l) -> {
+                            l.onReceive(data);
+                        });
+                    } finally {
+                        listenersLock.unlockRead(stamp);
+                    }
                 }
             }
             if (debug) {
                 LOG.log(Level.INFO, "Connection closing to client");
             }
-            listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
-                l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
-            });
+            final long stamp = listenersLock.readLock();
+            try {
+                listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
+                    l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
+                });
+            } finally {
+                listenersLock.unlockRead(stamp);
+            }
         } catch (SocketException ex) {
             if (debug) {
                 LOG.log(Level.SEVERE, "The connection to the client was shut down forcefully");
             }
-            listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
-                l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
-            });
+            final long stamp = listenersLock.readLock();
+            try {
+                listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
+                    l.onConnectionDrop(new JConnEvent("The connection to " + address + " has been closed"));
+                });
+            } finally {
+                listenersLock.unlockRead(stamp);
+            }
         } catch (IOException | ClassNotFoundException | CloneNotSupportedException | SecurityException ex) {
             if (debug) {
                 LOG.log(Level.SEVERE, null, ex);
             }
-            listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
-                l.onConnectionDrop(new JConnEvent("There was an error in the connection to " + address + ". The connection has been closed."));
-            });
+            final long stamp = listenersLock.readLock();
+            try {
+                listeners.forEach((l) -> { //Alert the listeners of the end of the connection.
+                    l.onConnectionDrop(new JConnEvent("There was an error in the connection to " + address + ". The connection has been closed."));
+                });
+            } finally {
+                listenersLock.unlockRead(stamp);
+            }
         } finally {
             conn_term = false;
             JConnConnectionAccept.removeThread(this); //Remove the connection from the list.

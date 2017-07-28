@@ -69,15 +69,17 @@ public class JConnConnectionAccept extends Thread {
 
     private static final List<JConnThread> THREADS = new LinkedList<>();
     private static final StampedLock LOCK = new StampedLock();
-    
+
     private final boolean debug;
 
     /**
      * All the detected method which have the @JConnMethod annotation.
      */
     private final LinkedList<Method> JCONNMETHODS;
-    
+
     private final List<JConnListener> listeners;
+
+    private final StampedLock listenersLock;
 
     /**
      * Constructor which starts the ThreadPoolExcecutor.
@@ -86,14 +88,16 @@ public class JConnConnectionAccept extends Thread {
      * @param classToScan the class to be scanned for annotations.
      * @param debug indicates if debug output should be shown.
      * @param listeners the JConnListeners.
+     * @param listenersLock
      * @throws IOException if there was a network error.
      */
-    public JConnConnectionAccept(int PORT, Class classToScan, boolean debug, List<JConnListener> listeners) throws IOException {
+    public JConnConnectionAccept(int PORT, Class classToScan, boolean debug, List<JConnListener> listeners, StampedLock listenersLock) throws IOException {
         super("ConnectionAcceptThread");
         this.socket = new ServerSocket(PORT);
         this.classToScan = classToScan;
         this.debug = debug;
         this.listeners = listeners;
+        this.listenersLock = listenersLock;
         PORT_IN_USE = PORT;
         JCONNMETHODS = new LinkedList<>();
         scanClass();
@@ -181,13 +185,25 @@ public class JConnConnectionAccept extends Thread {
                 }
                 final Constructor c = classToScan.getDeclaredConstructor(); //Get the blank constructor
                 c.setAccessible(true);
-                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance(), debug, listeners);
+                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance(), debug, listeners, listenersLock);
+                {
+                    final long stamp = listenersLock.readLock();
+                    try {
+                        listeners.forEach((l) -> {
+                            l.onConnectionReestablish(new JConnEvent(incoming.toString() + " has connected"));
+                        });
+                    } finally {
+                        listenersLock.unlockRead(stamp);
+                    }
+                }
                 pool.submit(th); //Submit the socket to the excecutor.
-                final long stamp = LOCK.writeLock();
-                try {
-                    THREADS.add(th);
-                } finally {
-                    LOCK.unlockWrite(stamp);
+                {
+                    final long stamp = LOCK.writeLock();
+                    try {
+                        THREADS.add(th);
+                    } finally {
+                        LOCK.unlockWrite(stamp);
+                    }
                 }
             } catch (IOException ex) {
                 if (debug) {

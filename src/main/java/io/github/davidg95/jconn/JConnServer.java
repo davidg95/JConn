@@ -23,6 +23,7 @@ package io.github.davidg95.jconn;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.locks.StampedLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -47,6 +48,10 @@ public class JConnServer {
      * The JConnListeners.
      */
     private final List<JConnListener> listeners;
+    /**
+     * StampedLock for JConnListeners.
+     */
+    private final StampedLock listenersLock;
 
     /**
      * Constructor which creates a new server instance.
@@ -58,8 +63,9 @@ public class JConnServer {
      */
     private JConnServer(int port, Class classToScan, boolean debug) throws IOException {
         listeners = new LinkedList<>();
+        listenersLock = new StampedLock();
         this.debug = debug;
-        acceptThread = new JConnConnectionAccept(port, classToScan, debug, listeners);
+        acceptThread = new JConnConnectionAccept(port, classToScan, debug, listeners, listenersLock);
         init();
     }
 
@@ -142,7 +148,12 @@ public class JConnServer {
      * @param listener the JConnListener to register.
      */
     public void registerListener(JConnListener listener) {
-        listeners.add(listener);
+        final long stamp = listenersLock.writeLock();
+        try {
+            listeners.add(listener);
+        } finally {
+            listenersLock.unlockWrite(stamp);
+        }
     }
 
     /**
