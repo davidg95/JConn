@@ -190,7 +190,7 @@ public class JConnConnectionAccept extends Thread {
                     final long stamp = listenersLock.readLock();
                     try {
                         listeners.forEach((l) -> {
-                            l.onConnectionReestablish(new JConnEvent(incoming.toString() + " has connected"));
+                            l.onConnectionEstablish(new JConnEvent(incoming.toString() + " has connected"));
                         });
                     } finally {
                         listenersLock.unlockRead(stamp);

@@ -215,7 +215,7 @@ public class JConn {
                                             @Override
                                             public void run() {
                                                 try {
-                                                    l.onConnectionReestablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                                    l.onConnectionEstablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
                                                 } catch (Exception e) { //Any exception which comes from the onConnectionReestablish().
 
                                                 }

@@ -44,11 +44,11 @@ public interface JConnListener {
     public void onConnectionDrop(JConnEvent event);
 
     /**
-     * When the connection to the server is reestablished after being down.
+     * When the connection to the server is established after being down.
      *
      * @param event the event data.
      */
-    public void onConnectionReestablish(JConnEvent event);
+    public void onConnectionEstablish(JConnEvent event);
 
     /**
      * When the server gracefully terminates the connection.
