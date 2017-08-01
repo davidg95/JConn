@@ -329,7 +329,7 @@ public class JConn {
      * @return the reply from the server as an Object.
      * @throws IOException if there was an error sending the data.
      */
-    public Object sendData(JConnData data) throws Exception, IOException {
+    public Object sendData(JConnData data) throws IOException, Throwable {
         if (!connected) {
             throw new IOException("No connection to server!");
         }

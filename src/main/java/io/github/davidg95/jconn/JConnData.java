@@ -51,9 +51,9 @@ public class JConnData implements Serializable, Cloneable {
      */
     private Object returnValue;
     /**
-     * The exception;
+     * The throwable;
      */
-    private Exception exception;
+    private Throwable exception;
     /**
      * The return type for the object.
      */
@@ -202,17 +202,17 @@ public class JConnData implements Serializable, Cloneable {
      * @param ex the exception.
      * @return this object.
      */
-    protected JConnData setException(Exception ex) {
+    protected JConnData setException(Throwable ex) {
         exception = ex;
         return this;
     }
 
     /**
-     * Gets the exception for this object.
+     * Gets the throwable for this object.
      *
-     * @return the exception.
+     * @return the throwable.
      */
-    public Exception getException() {
+    public Throwable getException() {
         return exception;
     }
 

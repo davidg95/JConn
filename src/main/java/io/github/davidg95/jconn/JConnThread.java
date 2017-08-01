@@ -199,7 +199,7 @@ public class JConnThread extends Thread {
                                         } catch (InvocationTargetException ex) {
                                             final long stamp = outLock.writeLock();
                                             try {
-                                                obOut.writeObject(JConnData.create(flag, uuid).setException(ex)); //Return the result
+                                                obOut.writeObject(JConnData.create(flag, uuid).setException(ex.getCause()).setType(JConnData.EXCEPTION)); //Return the result
                                             } finally {
                                                 outLock.unlockWrite(stamp);
                                             }
