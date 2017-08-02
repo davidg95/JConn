@@ -63,12 +63,14 @@ public class JConnConnectionAccept extends Thread {
      */
     protected static int MAX_QUEUE = 10;
 
+    private final ThreadPoolExecutor pool;
+
     private final ServerSocket socket;
 
     private final Class classToScan;
 
-    private static final List<JConnThread> THREADS = new LinkedList<>();
-    private static final StampedLock LOCK = new StampedLock();
+    private final List<JConnThread> threads;
+    private final StampedLock lock;
 
     private final boolean debug;
 
@@ -93,6 +95,9 @@ public class JConnConnectionAccept extends Thread {
      */
     public JConnConnectionAccept(int PORT, Class classToScan, boolean debug, List<JConnListener> listeners, StampedLock listenersLock) throws IOException {
         super("ConnectionAcceptThread");
+        threads = new LinkedList<>();
+        lock = new StampedLock();
+        pool = new ThreadPoolExecutor(MAX_CONN, MAX_QUEUE, 50000L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(MAX_QUEUE));
         this.socket = new ServerSocket(PORT);
         this.classToScan = classToScan;
         this.debug = debug;
@@ -108,8 +113,8 @@ public class JConnConnectionAccept extends Thread {
      *
      * @return a List of JConnThreads.
      */
-    protected static List<JConnThread> getAllThreads() {
-        return THREADS;
+    protected List<JConnThread> getAllThreads() {
+        return threads;
     }
 
     /**
@@ -117,12 +122,12 @@ public class JConnConnectionAccept extends Thread {
      *
      * @param th the thread to remove.
      */
-    protected static void removeThread(JConnThread th) {
-        final long stamp = LOCK.writeLock();
+    protected void removeThread(JConnThread th) {
+        final long stamp = lock.writeLock();
         try {
-            THREADS.remove(th);
+            threads.remove(th);
         } finally {
-            LOCK.unlockWrite(stamp);
+            lock.unlockWrite(stamp);
         }
     }
 
@@ -131,8 +136,8 @@ public class JConnConnectionAccept extends Thread {
      *
      * @return the stamp for the lock.
      */
-    protected static long readLock() {
-        return LOCK.readLock();
+    protected long readLock() {
+        return lock.readLock();
     }
 
     /**
@@ -140,8 +145,8 @@ public class JConnConnectionAccept extends Thread {
      *
      * @param stamp the stamp for the lock.
      */
-    protected static void unlockRead(final long stamp) {
-        LOCK.unlockRead(stamp);
+    protected void unlockRead(final long stamp) {
+        lock.unlockRead(stamp);
     }
 
     /**
@@ -161,9 +166,7 @@ public class JConnConnectionAccept extends Thread {
         if (debug) {
             LOG.log(Level.INFO, "Starting Thread Pool Excecutor");
         }
-        final ThreadPoolExecutor pool = new ThreadPoolExecutor(MAX_CONN, MAX_QUEUE, 50000L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(MAX_QUEUE));
         pool.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-
         try {
             if (debug) {
                 LOG.log(Level.INFO, "Local IP address is " + InetAddress.getLocalHost().getHostAddress());
@@ -185,7 +188,7 @@ public class JConnConnectionAccept extends Thread {
                 }
                 final Constructor c = classToScan.getDeclaredConstructor(); //Get the blank constructor
                 c.setAccessible(true);
-                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance(), debug, listeners, listenersLock);
+                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance(), debug, listeners, listenersLock, this);
                 {
                     final long stamp = listenersLock.readLock();
                     try {
@@ -198,11 +201,11 @@ public class JConnConnectionAccept extends Thread {
                 }
                 pool.submit(th); //Submit the socket to the excecutor.
                 {
-                    final long stamp = LOCK.writeLock();
+                    final long stamp = lock.writeLock();
                     try {
-                        THREADS.add(th);
+                        threads.add(th);
                     } finally {
-                        LOCK.unlockWrite(stamp);
+                        lock.unlockWrite(stamp);
                     }
                 }
             } catch (IOException ex) {
@@ -220,5 +223,13 @@ public class JConnConnectionAccept extends Thread {
                 LOG.log(Level.SEVERE, "There was an error in the connection to the client");
             }
         }
+    }
+
+    /**
+     * Stop the ThreadPoolExcecutor.
+     */
+    protected void shutdown() throws IOException {
+        pool.shutdown();
+        socket.close();
     }
 }

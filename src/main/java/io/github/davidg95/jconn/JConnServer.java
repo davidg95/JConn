@@ -111,9 +111,9 @@ public class JConnServer {
      */
     public void sendData(String ip, JConnData data) {
         if (ip == null) {
-            final long stamp = JConnConnectionAccept.readLock();
+            final long stamp = acceptThread.readLock();
             try {
-                JConnConnectionAccept.getAllThreads().forEach((thread) -> { //Send to all connections.
+                acceptThread.getAllThreads().forEach((thread) -> { //Send to all connections.
                     try {
                         thread.sendData(data);
                     } catch (IOException ex) {
@@ -121,12 +121,12 @@ public class JConnServer {
                     }
                 });
             } finally {
-                JConnConnectionAccept.unlockRead(stamp);
+                acceptThread.unlockRead(stamp);
             }
         } else {
-            final long stamp = JConnConnectionAccept.readLock();
+            final long stamp = acceptThread.readLock();
             try {
-                for (JConnThread thread : JConnConnectionAccept.getAllThreads()) {
+                for (JConnThread thread : acceptThread.getAllThreads()) {
                     if (thread.getAddress().equals(ip)) {
                         try {
                             thread.sendData(data);
@@ -137,7 +137,7 @@ public class JConnServer {
                     }
                 }
             } finally {
-                JConnConnectionAccept.unlockRead(stamp);
+                acceptThread.unlockRead(stamp);
             }
         }
     }
@@ -162,6 +162,24 @@ public class JConnServer {
      * @return a List of type JConnThread.
      */
     public List<JConnThread> getClientConnections() {
-        return JConnConnectionAccept.getAllThreads();
+        return acceptThread.getAllThreads();
+    }
+
+    /**
+     * Closes all connection and stops the server.
+     */
+    public void stopServer() {
+        for (JConnThread th : acceptThread.getAllThreads()) {
+            try {
+                th.endConnection();
+            } catch (IOException ex) {
+                Logger.getLogger(JConnServer.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        try {
+            acceptThread.shutdown();
+        } catch (IOException ex) {
+            Logger.getLogger(JConnServer.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }

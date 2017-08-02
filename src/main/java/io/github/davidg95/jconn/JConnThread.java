@@ -70,6 +70,7 @@ public class JConnThread extends Thread {
 
     private final List<JConnListener> listeners;
     private final StampedLock listenersLock;
+    private final JConnConnectionAccept th;
 
     /**
      * Constructor for Connection thread.
@@ -81,12 +82,13 @@ public class JConnThread extends Thread {
      * @param debug indicates if debug output should be shown.
      * @param listeners the JConnListeners.
      * @param listenersLock
+     * @param th the connection accept thread object.
      * @throws java.lang.InstantiationException if there was an error creating
      * an instance of the method class.
      * @throws java.lang.IllegalAccessException if the method class is not
      * accessible.
      */
-    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners, StampedLock listenersLock) throws InstantiationException, IllegalAccessException {
+    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners, StampedLock listenersLock, JConnConnectionAccept th) throws InstantiationException, IllegalAccessException {
         super(name);
         this.socket = s;
         this.address = s.getInetAddress().getHostAddress();
@@ -96,6 +98,7 @@ public class JConnThread extends Thread {
         outLock = new StampedLock();
         this.methodClass = methodClass;
         this.listenersLock = listenersLock;
+        this.th = th;
     }
 
     /**
@@ -271,7 +274,7 @@ public class JConnThread extends Thread {
             }
         } finally {
             conn_term = false;
-            JConnConnectionAccept.removeThread(this); //Remove the connection from the list.
+            th.removeThread(this); //Remove the connection from the list.
             try {
                 socket.close(); //Close the socket
                 if (debug) {
