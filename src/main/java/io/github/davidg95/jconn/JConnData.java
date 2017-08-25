@@ -80,6 +80,10 @@ public class JConnData implements Serializable, Cloneable {
      * Indicates that the server wished to terminate the connection.
      */
     public static final int TERMINATE_CONNECTION = 5;
+    /**
+     * Indicates that it is a keepalive packet.
+     */
+    protected static final int KEEP_ALIVE = 6;
 
     /**
      * Constructor which creates a ConnectionData object with no data, only a
@@ -187,8 +191,8 @@ public class JConnData implements Serializable, Cloneable {
     }
 
     /**
-     * Returns the return value indicated by the RETURN key in the HashMap. Same as
-     * getData().getKey("RETURN").
+     * Returns the return value indicated by the RETURN key in the HashMap. Same
+     * as getData().getKey("RETURN").
      *
      * @return the return value.
      */

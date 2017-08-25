@@ -67,6 +67,8 @@ public class JConn {
 
     private boolean retry;
 
+    private boolean run;
+
     /**
      * Creates a new JConn object.
      */
@@ -79,13 +81,42 @@ public class JConn {
         retry = true;
     }
 
+    private void keepAlive() {
+        final Runnable keepAliveRun = new Runnable() {
+            @Override
+            public void run() {
+                while (run) {
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    try {
+                        out.writeObject(JConnData.create("KEEP_ALIVE").setType(JConnData.KEEP_ALIVE));
+                    } catch (IOException ex) {
+                        final long stamp = listenerLock.readLock();
+                        try {
+                            listeners.forEach((l) -> {
+                                l.onConnectionDrop(new JConnEvent("The connection has been lost"));
+                            });
+                        } finally {
+                            listenerLock.unlockRead(stamp);
+                        }
+                    }
+                }
+            }
+        };
+        final Thread keepAliveThread = new Thread(keepAliveRun, "KEEP_ALIVE");
+        keepAliveThread.setDaemon(true);
+        keepAliveThread.start();
+    }
+
     /**
      * This thread is the entry point for all incoming data.
      */
     private class IncomingThread extends Thread {
 
         private final ObjectInputStream in;
-        private boolean run;
 
         /**
          * Constructor which creates the IncomingThread.
@@ -95,7 +126,6 @@ public class JConn {
         private IncomingThread(ObjectInputStream in) {
             super("Incoming_Thread");
             this.in = in;
-            run = true;
         }
 
         /**
@@ -242,13 +272,6 @@ public class JConn {
                 }
             }
         }
-
-        /**
-         * Calling this will stop the thread from running.
-         */
-        private void stopRun() {
-            run = false;
-        }
     }
 
     /**
@@ -269,8 +292,10 @@ public class JConn {
         out = new ObjectOutputStream(socket.getOutputStream());
         out.flush();
         in = new ObjectInputStream(socket.getInputStream());
+        run = true;
         inc = new IncomingThread(in);
         inc.start();
+        keepAlive();
         connected = true;
     }
 
@@ -380,7 +405,7 @@ public class JConn {
     public void endConnection() throws IOException {
         connected = false;
         socket.close();
-        inc.stopRun();
+        run = false;
         in.close();
         out.flush();
         out.close();

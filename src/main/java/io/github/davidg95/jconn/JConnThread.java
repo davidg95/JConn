@@ -149,6 +149,10 @@ public class JConnThread extends Thread {
 
                 final JConnData data = currentData.clone(); //Take a clone of the ConnectionData object
 
+                if (data.getType() == JConnData.KEEP_ALIVE) {
+                    continue;
+                }
+
                 if (debug) {
                     LOG.log(Level.INFO, "Received " + data.getFlag() + " from client", data.getFlag());
                 }
