@@ -455,6 +455,7 @@ public class JConn {
         } finally {
             listenerLock.unlockRead(stamp);
         }
+        new Thread(reconRun, "RECONENCT").start();
     }
 
     private class ReconnectRunnable implements Runnable {
