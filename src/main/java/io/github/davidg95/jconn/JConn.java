@@ -65,9 +65,13 @@ public class JConn {
      */
     public static int RECONNECT_INTERVAL = 1000;
 
+    private final ReconnectRunnable reconRun = new ReconnectRunnable();
+
     private boolean retry;
 
     private boolean run;
+
+    private boolean useKeepAlive;
 
     /**
      * Creates a new JConn object.
@@ -94,14 +98,7 @@ public class JConn {
                     try {
                         out.writeObject(JConnData.create("KEEP_ALIVE").setType(JConnData.KEEP_ALIVE));
                     } catch (IOException ex) {
-                        final long stamp = listenerLock.readLock();
-                        try {
-                            listeners.forEach((l) -> {
-                                l.onConnectionDrop(new JConnEvent("The connection has been lost"));
-                            });
-                        } finally {
-                            listenerLock.unlockRead(stamp);
-                        }
+                        connectionDown();
                     }
                 }
             }
@@ -218,57 +215,7 @@ public class JConn {
                 }
             } catch (SocketException ex) {
                 if (connected) {
-                    connected = false;
-                    {
-                        final long stamp = listenerLock.readLock();
-                        try {
-                            listeners.forEach((l) -> { //Alert the listeners of the connection loss
-                                new Thread() {
-                                    @Override
-                                    public void run() {
-                                        try {
-                                            l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
-                                        } catch (Exception e) { //Any exception which comes from the onConnectionDrop().
-
-                                        }
-                                    }
-                                }.start();
-                            });
-                        } finally {
-                            listenerLock.unlockRead(stamp);
-                        }
-                    }
-                    //Attempt a reconnection.
-                    try {
-                        retry = true;
-                        while (retry) {
-                            try {
-                                connect(ip, port); //Attempt a reconnect.
-                                final long stamp = listenerLock.readLock();
-                                try {
-                                    listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
-                                        new Thread() {
-                                            @Override
-                                            public void run() {
-                                                try {
-                                                    l.onConnectionEstablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
-                                                } catch (Exception e) { //Any exception which comes from the onConnectionReestablish().
-
-                                                }
-                                            }
-                                        }.start();
-                                    });
-                                } finally {
-                                    listenerLock.unlockRead(stamp);
-                                }
-                                retry = false;
-                            } catch (IOException ex2) {
-                                Thread.sleep(RECONNECT_INTERVAL); //Wait and try again
-                            }
-                        }
-                    } catch (InterruptedException ex1) {
-                        Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex1);
-                    }
+                    connectionDown();
                 }
             }
         }
@@ -289,6 +236,7 @@ public class JConn {
         socket = new Socket(ip, port);
         this.ip = ip;
         this.port = port;
+        this.useKeepAlive = keepAlive;
         retry = true;
         out = new ObjectOutputStream(socket.getOutputStream());
         out.flush();
@@ -331,33 +279,38 @@ public class JConn {
             throw new IOException("No connection to server!");
         }
         final JConnStatus status = new JConnStatus();
-        out.writeObject(data);
-        status.setSent(true);
-        final ReturnData returnData = new ReturnData();
-        //Create the runnable that will execute on a reply
-        final JConnRunnable runnable = (tempReply) -> {
-            returnData.object = tempReply;
-            returnData.cont = true;
-        };
-        final long stamp = queueLock.writeLock();
         try {
-            incomingQueue.put(data.getUuid(), runnable); //Add the runnable to the queue
-        } finally {
-            queueLock.unlockWrite(stamp);
-        }
-        final Runnable runReturn = () -> {
-            waitHere(returnData); //Wait for the return;
-            status.setReceived(true);
-            JConnData reply = (JConnData) returnData.object; //Get the reply
-            if (reply.getFlag().equals("ILLEGAL_PARAM_LENGTH")) { //Check if there was an illegal paramter length
-                //throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
-                return;
+            out.writeObject(data);
+            status.setSent(true);
+            final ReturnData returnData = new ReturnData();
+            //Create the runnable that will execute on a reply
+            final JConnRunnable runnable = (tempReply) -> {
+                returnData.object = tempReply;
+                returnData.cont = true;
+            };
+            final long stamp = queueLock.writeLock();
+            try {
+                incomingQueue.put(data.getUuid(), runnable); //Add the runnable to the queue
+            } finally {
+                queueLock.unlockWrite(stamp);
             }
-            run.run(reply); //Run the runnable that was passed in by the user, passing in the reply.
-        };
-        final Thread thread = new Thread(runReturn, "REQUEST-" + data.getUuid());
-        thread.start(); //Start the thread to wait for the reply.
-        return status;
+            final Runnable runReturn = () -> {
+                waitHere(returnData); //Wait for the return;
+                status.setReceived(true);
+                JConnData reply = (JConnData) returnData.object; //Get the reply
+                if (reply.getFlag().equals("ILLEGAL_PARAM_LENGTH")) { //Check if there was an illegal paramter length
+                    //throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
+                    return;
+                }
+                run.run(reply); //Run the runnable that was passed in by the user, passing in the reply.
+            };
+            final Thread thread = new Thread(runReturn, "REQUEST-" + data.getUuid());
+            thread.start(); //Start the thread to wait for the reply.
+            return status;
+        } catch (IOException ex) {
+            connectionDown();
+            throw ex;
+        }
     }
 
     /**
@@ -374,28 +327,33 @@ public class JConn {
         if (!connected) {
             throw new IOException("No connection to server!");
         }
-        out.writeObject(data);
-        JConnData reply;
-        final ReturnData returnData = new ReturnData();
-        //Create the runnable that will be executed on a reply
-        final JConnRunnable runnable = (tempReply) -> {
-            returnData.object = tempReply;
-            returnData.cont = true;
-        };
-        final long stamp = queueLock.writeLock();
         try {
-            incomingQueue.put(data.getUuid(), runnable); //Add the runnable to the queue
-        } finally {
-            queueLock.unlockWrite(stamp);
+            out.writeObject(data);
+            JConnData reply;
+            final ReturnData returnData = new ReturnData();
+            //Create the runnable that will be executed on a reply
+            final JConnRunnable runnable = (tempReply) -> {
+                returnData.object = tempReply;
+                returnData.cont = true;
+            };
+            final long stamp = queueLock.writeLock();
+            try {
+                incomingQueue.put(data.getUuid(), runnable); //Add the runnable to the queue
+            } finally {
+                queueLock.unlockWrite(stamp);
+            }
+            waitHere(returnData); //Wait here until a reply is received
+            reply = (JConnData) returnData.object; //Get the reply
+            if (reply.getType() == JConnData.ILLEGAL_PARAM_LENGTH) { //Check if it is an illegal parameter length
+                throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
+            } else if (reply.getType() == JConnData.EXCEPTION) {
+                throw reply.getException();
+            }
+            return reply.getReturnValue(); //Return the reply
+        } catch (IOException ex) {
+            connectionDown();
+            throw ex;
         }
-        waitHere(returnData); //Wait here until a reply is received
-        reply = (JConnData) returnData.object; //Get the reply
-        if (reply.getType() == JConnData.ILLEGAL_PARAM_LENGTH) { //Check if it is an illegal parameter length
-            throw new IOException("Illegal parameter length, the correct number of parameters was not supplied");
-        } else if (reply.getType() == JConnData.EXCEPTION) {
-            throw reply.getException();
-        }
-        return reply.getReturnValue(); //Return the reply
     }
 
     /**
@@ -475,5 +433,65 @@ public class JConn {
 
         private Object object; //The reply.
         private boolean cont = false; //This flag indicates when the reply has been received.
+    }
+
+    private void connectionDown() {
+        connected = false;
+        run = false;
+        final long stamp = listenerLock.readLock();
+        try {
+            listeners.forEach((l) -> { //Alert the listeners of the connection loss
+                new Thread() {
+                    @Override
+                    public void run() {
+                        try {
+                            l.onConnectionDrop(new JConnEvent("The connection to " + ip + ":" + port + " has been lost, attempting reconnection"));
+                        } catch (Exception e) { //Any exception which comes from the onConnectionDrop().
+
+                        }
+                    }
+                }.start();
+            });
+        } finally {
+            listenerLock.unlockRead(stamp);
+        }
+    }
+
+    private class ReconnectRunnable implements Runnable {
+
+        @Override
+        public void run() {
+            try {
+                retry = true;
+                while (retry) {
+                    try {
+                        connect(ip, port, useKeepAlive); //Attempt a reconnect.
+                        final long stamp = listenerLock.readLock();
+                        try {
+                            listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
+                                new Thread() {
+                                    @Override
+                                    public void run() {
+                                        try {
+                                            l.onConnectionEstablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                        } catch (Exception e) { //Any exception which comes from the onConnectionReestablish().
+
+                                        }
+                                    }
+                                }.start();
+                            });
+                        } finally {
+                            listenerLock.unlockRead(stamp);
+                        }
+                        retry = false;
+                    } catch (IOException ex2) {
+                        Thread.sleep(RECONNECT_INTERVAL); //Wait and try again
+                    }
+                }
+            } catch (InterruptedException ex1) {
+                Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, null, ex1);
+            }
+        }
+
     }
 }
