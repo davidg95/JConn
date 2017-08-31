@@ -279,11 +279,12 @@ public class JConn {
      *
      * @param ip the IP address to connect to.
      * @param port the port number to connect to.
+     * @param keepAlive Specifies if keep-alive should be enabled.
      * @throws IOException if there was an error connecting.
      */
-    public void connect(String ip, int port) throws IOException {
+    public void connect(String ip, int port, boolean keepAlive) throws IOException {
         if (connected) {
-            throw new IOException("there is already an active connection on this JConn object. Close this connection or create a new instance of the JConn class");
+            throw new IOException("There is already an active connection on this JConn object. Close this connection or create a new instance of the JConn class");
         }
         socket = new Socket(ip, port);
         this.ip = ip;
@@ -295,8 +296,23 @@ public class JConn {
         run = true;
         inc = new IncomingThread(in);
         inc.start();
-        keepAlive();
+        if (keepAlive) {
+            keepAlive();
+        }
         connected = true;
+    }
+
+    /**
+     * Method to open the connection to the server.
+     *
+     * Keep-alive will be disabled.
+     *
+     * @param ip the IP address to connect to.
+     * @param port the port number to connect to.
+     * @throws IOException if there was an error connecting.
+     */
+    public void connect(String ip, int port) throws IOException {
+        connect(ip, port, false);
     }
 
     /**
