@@ -234,6 +234,7 @@ public class JConn {
             throw new IOException("There is already an active connection on this JConn object. Close this connection or create a new instance of the JConn class");
         }
         socket = new Socket(ip, port);
+        connected = true;
         this.ip = ip;
         this.port = port;
         this.useKeepAlive = keepAlive;
@@ -247,7 +248,6 @@ public class JConn {
         if (keepAlive) {
             keepAlive();
         }
-        connected = true;
     }
 
     /**
@@ -470,16 +470,11 @@ public class JConn {
                         final long stamp = listenerLock.readLock();
                         try {
                             listeners.forEach((l) -> { //Alert the listeners that the connection has been reestablished.
-                                new Thread() {
-                                    @Override
-                                    public void run() {
-                                        try {
-                                            l.onConnectionEstablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
-                                        } catch (Exception e) { //Any exception which comes from the onConnectionReestablish().
+                                try {
+                                    l.onConnectionEstablish(new JConnEvent("The connection to " + ip + ":" + port + " has been reestablished"));
+                                } catch (Exception e) { //Any exception which comes from the onConnectionReestablish().
 
-                                        }
-                                    }
-                                }.start();
+                                }
                             });
                         } finally {
                             listenerLock.unlockRead(stamp);
