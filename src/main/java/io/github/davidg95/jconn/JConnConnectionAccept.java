@@ -90,7 +90,7 @@ public class JConnConnectionAccept extends Thread {
      * @param classToScan the class to be scanned for annotations.
      * @param debug indicates if debug output should be shown.
      * @param listeners the JConnListeners.
-     * @param listenersLock
+     * @param listenersLock the lock for the listeners.
      * @throws IOException if there was a network error.
      */
     public JConnConnectionAccept(int PORT, Class classToScan, boolean debug, List<JConnListener> listeners, StampedLock listenersLock) throws IOException {
