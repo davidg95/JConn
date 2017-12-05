@@ -20,6 +20,7 @@
  */
 package io.github.davidg95.jconn;
 
+import io.github.davidg95.jconn.events.*;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -192,13 +193,14 @@ public class JConn {
                             }
                             default: //If it is not known.
                             {
+                                final JConnReceiveEvent event = new JConnReceiveEvent(data);
                                 final long stamp = listenerLock.readLock();
                                 try {
                                     listeners.forEach((l) -> { //Alert the listeners of the data.
                                         try {
-                                            l.onReceive(data);
+                                            l.onReceive(event);
                                         } catch (Exception e) {
-
+                                            Logger.getLogger(JConn.class.getName()).log(Level.SEVERE, "Error passing data receive to listener", e);
                                         }
                                     });
                                 } finally {

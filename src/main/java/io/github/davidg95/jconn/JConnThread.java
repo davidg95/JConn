@@ -20,6 +20,7 @@
  */
 package io.github.davidg95.jconn;
 
+import io.github.davidg95.jconn.events.*;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -156,14 +157,29 @@ public class JConnThread extends Thread {
                 if (debug) {
                     LOG.log(Level.INFO, "Received " + data.getFlag() + " from client", data.getFlag());
                 }
-                boolean found = false;
+                final JConnReceiveEvent event = new JConnReceiveEvent(data);
+                final long stamp2 = listenersLock.readLock();
+                try {
+                    listeners.forEach((l) -> {
+                        try {
+                            l.onReceive(event);
+                        } catch (Exception e) {
+                            LOG.log(Level.SEVERE, "Error passing data receive to listener", e);
+                        }
+                    });
+                } finally {
+                    listenersLock.unlockRead(stamp2);
+                }
+                if(event.isCancelled()){
+                    LOG.log(Level.INFO, "Data receive cancelled");
+                    continue;
+                }
                 for (Method m : JCONNMETHODS) { //Loop through every method in this class
                     final Annotation a = m.getAnnotation(JConnMethod.class); //Get the JConnMethod annotation
                     final JConnMethod ja = (JConnMethod) a; //Get the JConnMethod annotation object to find out the flag name
                     final String flag = data.getFlag(); //Get the flag from the connection object
                     final UUID uuid = data.getUuid();
                     if (ja.value().equals(flag)) { //Check if the current flag matches the flag definted on the annotation
-                        found = true;
                         try {
                             final JConnData clone = data.clone(); //Take a clone of the connection data object
                             m.setAccessible(true); //Set the access to public
@@ -228,16 +244,6 @@ public class JConnThread extends Thread {
                         } catch (IllegalArgumentException ex) {
                             Logger.getLogger(JConnThread.class.getName()).log(Level.SEVERE, null, ex);
                         }
-                    }
-                }
-                if (!found) { //If a matching method was not found then pass the JConnData obejct over the the listeners.
-                    final long stamp = listenersLock.readLock();
-                    try {
-                        listeners.forEach((l) -> {
-                            l.onReceive(data);
-                        });
-                    } finally {
-                        listenersLock.unlockRead(stamp);
                     }
                 }
             }

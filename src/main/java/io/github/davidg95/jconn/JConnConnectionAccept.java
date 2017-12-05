@@ -20,6 +20,7 @@
  */
 package io.github.davidg95.jconn;
 
+import io.github.davidg95.jconn.events.JConnEvent;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -191,10 +192,12 @@ public class JConnConnectionAccept extends Thread {
                     final long stamp = listenersLock.readLock();
                     try {
                         listeners.forEach((l) -> {
-                            l.onConnectionEstablish(event);
+                            try {
+                                l.onConnectionEstablish(event);
+                            } catch (Exception e) {
+                                LOG.log(Level.SEVERE, "Error passing JConnEvent to listener", e);
+                            }
                         });
-                    } catch (Exception e) {
-                        LOG.log(Level.SEVERE, "Error passing JConnEvent to listener", e);
                     } finally {
                         listenersLock.unlockRead(stamp);
                     }

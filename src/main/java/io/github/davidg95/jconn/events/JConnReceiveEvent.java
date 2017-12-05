@@ -18,35 +18,30 @@
  *
  * To get in touch with me, send an email to pirakaleader@googlemail.com.
  */
-package io.github.davidg95.jconn;
+package io.github.davidg95.jconn.events;
+
+import io.github.davidg95.jconn.*;
 
 /**
- * Class for containing info about JConnEvents.
  *
  * @author David
  */
-public class JConnEvent {
+public class JConnReceiveEvent {
 
-    private final String message; //The message.
+    private JConnData data;
     private boolean cancelled;
 
-    /**
-     * Create a JConnEvent with a message.
-     *
-     * @param message the message.
-     */
-    public JConnEvent(String message) {
-        this.message = message;
+    public JConnReceiveEvent(JConnData data) {
+        this.data = data;
         this.cancelled = false;
     }
 
-    /**
-     * Get the message.
-     *
-     * @return the message as a String.
-     */
-    public String getMessage() {
-        return message;
+    public JConnData getData() {
+        return data;
+    }
+
+    public void setData(JConnData data) {
+        this.data = data;
     }
 
     public boolean isCancelled() {
@@ -59,6 +54,7 @@ public class JConnEvent {
 
     @Override
     public String toString() {
-        return message;
+        return "JConnReceiveEvent{" + "data=" + data + ", cancelled=" + cancelled + '}';
     }
+
 }

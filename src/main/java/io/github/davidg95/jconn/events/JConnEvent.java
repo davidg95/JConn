@@ -18,42 +18,47 @@
  *
  * To get in touch with me, send an email to pirakaleader@googlemail.com.
  */
-package io.github.davidg95.jconn;
-
-import io.github.davidg95.jconn.events.*;
+package io.github.davidg95.jconn.events;
 
 /**
- * Interface for class to listen for JConnEvents. Any class that implements this
- * interface must be registered using the JConn.registerListener(JConnListener)
- * method.
+ * Class for containing info about JConnEvents.
  *
  * @author David
  */
-public interface JConnListener {
+public class JConnEvent {
+
+    private final String message; //The message.
+    private boolean cancelled;
 
     /**
-     * When non-request data is received.
+     * Create a JConnEvent with a message.
      *
-     * @param data the data.
+     * @param message the message.
      */
-    public void onReceive(JConnReceiveEvent event);
+    public JConnEvent(String message) {
+        this.message = message;
+        this.cancelled = false;
+    }
 
     /**
-     * When the connection to the server is lost.
+     * Get the message.
      *
-     * @param event the event data.
+     * @return the message as a String.
      */
-    public void onConnectionDrop(JConnEvent event);
+    public String getMessage() {
+        return message;
+    }
 
-    /**
-     * When the connection to the server is established after being down.
-     *
-     * @param event the event data.
-     */
-    public void onConnectionEstablish(JConnEvent event);
+    public boolean isCancelled() {
+        return cancelled;
+    }
 
-    /**
-     * When the server gracefully terminates the connection.
-     */
-    public void onServerGracefulEnd();
+    public void setCancelled(boolean cancelled) {
+        this.cancelled = cancelled;
+    }
+
+    @Override
+    public String toString() {
+        return message;
+    }
 }
