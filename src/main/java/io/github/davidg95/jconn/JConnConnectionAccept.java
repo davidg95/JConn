@@ -186,19 +186,24 @@ public class JConnConnectionAccept extends Thread {
                 if (debug) {
                     LOG.log(Level.INFO, "Connection from " + incoming.getInetAddress().getHostAddress());
                 }
-                final Constructor c = classToScan.getDeclaredConstructor(); //Get the blank constructor
-                c.setAccessible(true);
-                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance(), debug, listeners, listenersLock, this);
+                final JConnEvent event = new JConnEvent(incoming.toString() + " has connected");
                 {
                     final long stamp = listenersLock.readLock();
                     try {
                         listeners.forEach((l) -> {
-                            l.onConnectionEstablish(new JConnEvent(incoming.toString() + " has connected"));
+                            l.onConnectionEstablish(event);
                         });
                     } finally {
                         listenersLock.unlockRead(stamp);
                     }
                 }
+                if (event.isCancelled()) {
+                    LOG.log(Level.INFO, "Connection blocked");
+                    continue;
+                }
+                final Constructor c = classToScan.getDeclaredConstructor(); //Get the blank constructor
+                c.setAccessible(true);
+                final JConnThread th = new JConnThread(socket.getInetAddress().getHostAddress(), incoming, JCONNMETHODS, c.newInstance(), debug, listeners, listenersLock, this);
                 pool.submit(th); //Submit the socket to the excecutor.
                 {
                     final long stamp = lock.writeLock();

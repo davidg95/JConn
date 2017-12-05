@@ -28,6 +28,7 @@ package io.github.davidg95.jconn;
 public class JConnEvent {
 
     private final String message; //The message.
+    private boolean cancelled;
 
     /**
      * Create a JConnEvent with a message.
@@ -36,6 +37,7 @@ public class JConnEvent {
      */
     public JConnEvent(String message) {
         this.message = message;
+        this.cancelled = false;
     }
 
     /**
@@ -45,6 +47,14 @@ public class JConnEvent {
      */
     public String getMessage() {
         return message;
+    }
+
+    public boolean isCancelled() {
+        return cancelled;
+    }
+
+    public void setCancelled(boolean cancelled) {
+        this.cancelled = cancelled;
     }
 
     @Override
