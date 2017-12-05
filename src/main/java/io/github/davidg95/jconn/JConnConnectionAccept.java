@@ -193,6 +193,8 @@ public class JConnConnectionAccept extends Thread {
                         listeners.forEach((l) -> {
                             l.onConnectionEstablish(event);
                         });
+                    } catch (Exception e) {
+                        LOG.log(Level.SEVERE, "Error passing JConnEvent to listener", e);
                     } finally {
                         listenersLock.unlockRead(stamp);
                     }
