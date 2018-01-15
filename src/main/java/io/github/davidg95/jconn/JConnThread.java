@@ -49,8 +49,8 @@ public class JConnThread extends Thread {
 
     private static final Logger LOG = Logger.getGlobal();
 
-    private ObjectInputStream obIn; //InputStream for receiving data.
-    private ObjectOutputStream obOut; //OutputStream for sending data
+    private final ObjectInputStream obIn; //InputStream for receiving data.
+    private final ObjectOutputStream obOut; //OutputStream for sending data
 
     private final StampedLock outLock; //The StampedLock for protecting the output stream.
 
@@ -89,7 +89,7 @@ public class JConnThread extends Thread {
      * @throws java.lang.IllegalAccessException if the method class is not
      * accessible.
      */
-    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners, StampedLock listenersLock, JConnConnectionAccept th) throws InstantiationException, IllegalAccessException {
+    public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners, StampedLock listenersLock, JConnConnectionAccept th) throws InstantiationException, IllegalAccessException, IOException {
         super(name);
         this.socket = s;
         this.address = s.getInetAddress().getHostAddress();
@@ -100,6 +100,9 @@ public class JConnThread extends Thread {
         this.methodClass = methodClass;
         this.listenersLock = listenersLock;
         this.th = th;
+        obIn = new ObjectInputStream(socket.getInputStream());
+        obOut = new ObjectOutputStream(socket.getOutputStream());
+        obOut.flush();
     }
 
     /**
@@ -141,10 +144,6 @@ public class JConnThread extends Thread {
     @Override
     public void run() {
         try {
-            obIn = new ObjectInputStream(socket.getInputStream());
-            obOut = new ObjectOutputStream(socket.getOutputStream());
-            obOut.flush();
-
             while (!conn_term) {
                 final JConnData currentData = (JConnData) obIn.readObject();
 
@@ -170,7 +169,7 @@ public class JConnThread extends Thread {
                 } finally {
                     listenersLock.unlockRead(stamp2);
                 }
-                if(event.isCancelled()){
+                if (event.isCancelled()) {
                     LOG.log(Level.INFO, "Data receive cancelled");
                     continue;
                 }
