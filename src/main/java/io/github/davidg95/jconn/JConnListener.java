@@ -34,7 +34,7 @@ public interface JConnListener {
     /**
      * When non-request data is received.
      *
-     * @param data the data.
+     * @param event the event with the data.
      */
     public void onReceive(JConnReceiveEvent event);
 

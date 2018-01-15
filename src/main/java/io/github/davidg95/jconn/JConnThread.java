@@ -82,12 +82,13 @@ public class JConnThread extends Thread {
      * @param methodClass the methodClass object.
      * @param debug indicates if debug output should be shown.
      * @param listeners the JConnListeners.
-     * @param listenersLock
+     * @param listenersLock the lock to protect the listeners list.
      * @param th the connection accept thread object.
      * @throws java.lang.InstantiationException if there was an error creating
      * an instance of the method class.
      * @throws java.lang.IllegalAccessException if the method class is not
      * accessible.
+     * @throws java.io.IOException if there is a network error.
      */
     public JConnThread(String name, Socket s, LinkedList<Method> methods, Object methodClass, boolean debug, List<JConnListener> listeners, StampedLock listenersLock, JConnConnectionAccept th) throws InstantiationException, IllegalAccessException, IOException {
         super(name);
